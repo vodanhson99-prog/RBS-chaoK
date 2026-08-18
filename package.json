@@ -1,0 +1,12 @@
+{
+  "name": "rbs-chaok",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix api\" \"npm run dev --prefix web\"",
+    "dev:web": "npm run dev --prefix web",
+    "dev:api": "npm run dev --prefix api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

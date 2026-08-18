@@ -1,6 +1,32 @@
 # Hand Frame Capture
 
-Chụp ảnh bằng cách **vẽ tứ giác bằng đầu ngón trỏ** (tay trái hoặc phải đều được). Giữ yên tại mỗi góc để ghim 4 điểm → đếm ngược → lưu ảnh vùng trong khung, warp cố định **16:9**.
+Desktop Python booth **và** web photobooth (MediaPipe trên trình duyệt, 6-shot strip, QR download).
+
+## Web photobooth
+
+Cần Node 18+, webcam, **HTTPS hoặc localhost** (camera).
+
+```bash
+npm install
+cd api && npm install && cd ../web && npm install
+cd ..
+npm run dev
+```
+
+Mở http://localhost:5173
+
+- Chọn template: Navy/Maroon 16:9 hoặc Woozi strip ×6
+- Giơ ngón trỏ, giữ yên 4 góc → countdown → chụp (không vẽ MediaPipe lên ảnh lưu)
+- Strip: 6 shot liên tiếp, ghép vào khung, Retake last
+- `M` đổi khung, `R` reset góc, `Space` chụp ngay
+- Upload API (`:8787`) lưu JPEG 48 giờ → trang kết quả có QR `/p/:token`
+
+Biến môi trường API: `PUBLIC_BASE_URL` (URL public để QR trỏ đúng khi deploy), `PORT` (mặc định 8787).
+
+Khung web nằm ở `web/public/frames/` (`blueframe.png`, `redframe.png`, `woozi-strip.png`).
+
+## Desktop Python
+
 
 ## Yêu cầu
 

@@ -1,3 +1,4 @@
+node_modules/
 __pycache__/
 *.py[cod]
 .venv/
@@ -6,3 +7,8 @@ captures/*.jpg
 captures/*.png
 .DS_Store
 *.log
+web/node_modules/
+web/dist/
+api/node_modules/
+api/data/sessions/*
+!api/data/sessions/.gitkeep
