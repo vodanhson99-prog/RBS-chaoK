@@ -21,26 +21,94 @@ Mở http://localhost:5173
 - `M` đổi khung, `R` hủy pose / countdown
 - Upload API (`:8787`) lưu JPEG 48 giờ → trang kết quả có QR `/p/:token`
 
-### In anh (Canon SELPHY CP1000)
+### Cấu hình in ảnh trên Windows (Canon SELPHY CP1000)
 
-1. Cam may in USB vao may Windows dang chay API.
-2. Cai Canon CP1000 driver, kiem tra may in xuat hien trong Windows Settings > Printers.
-3. Lay ten may in chinh xac (vd `Canon SELPHY CP1000`):
-   ```powershell
-   Get-Printer | Select-Object Name
-   ```
-4. Dat bien moi truong truoc khi chay:
-   ```powershell
-   $env:CANON_PRINTER_NAME="Canon SELPHY CP1000"
-   npm run dev
-   ```
-5. Thay file `web/public/payment-qr.png` bang anh QR chuyen khoan cua ban (PNG, khuyen nghi 400×400px).
-6. Tren man hinh ket qua, bam **IN ANH** → khach nhap ten → nhan vien kiem tra thanh toan → bam **XAC NHAN DA THANH TOAN & IN**.
-7. Anh duoc luu tai `api/data/print-queue/TenKhach-YYYYMMDD-HHMMSS.jpg` va gui lenh in toi may in.
+API gửi lệnh in qua Windows Print Spooler và PowerShell. Máy in phải được cài driver và kết nối với **chính máy Windows đang chạy API**.
 
-Neu khong dat `CANON_PRINTER_NAME`, anh van duoc luu vao thu muc `print-queue` nhung khong gui lenh in (co the in thu cong).
+#### 1. Cài và kiểm tra máy in
 
-Bien moi truong API: `PUBLIC_BASE_URL` (URL public de QR tro dung khi deploy), `PORT` (mac dinh 8787), `CANON_PRINTER_NAME` (ten may in Windows).
+1. Kết nối Canon SELPHY CP1000 bằng USB và bật máy in.
+2. Cài driver Canon CP1000 nếu Windows chưa tự nhận.
+3. Mở **Settings → Bluetooth & devices → Printers & scanners**.
+4. Kiểm tra máy in xuất hiện và in thử một trang từ Windows trước khi chạy photobooth.
+
+Lấy tên máy in chính xác bằng PowerShell:
+
+```powershell
+Get-Printer | Select-Object Name
+```
+
+Ví dụ:
+
+```text
+Name
+----
+Canon SELPHY CP1000
+Microsoft Print to PDF
+```
+
+Dùng đúng giá trị trong cột `Name`, bao gồm cả khoảng trắng.
+
+#### 2. Chạy API với tên máy in
+
+Mở PowerShell tại thư mục project và đặt biến môi trường trước khi chạy:
+
+```powershell
+$env:CANON_PRINTER_NAME="Canon SELPHY CP1000"
+npm run dev
+```
+
+Nếu chỉ chạy riêng API:
+
+```powershell
+$env:CANON_PRINTER_NAME="Canon SELPHY CP1000"
+cd api
+npm run dev
+```
+
+Biến `$env:CANON_PRINTER_NAME` chỉ tồn tại trong cửa sổ PowerShell hiện tại. Nếu đóng cửa sổ, cần đặt lại biến trước lần chạy tiếp theo.
+
+Muốn lưu cấu hình lâu dài cho các cửa sổ PowerShell mới, dùng `setx` một lần:
+
+```powershell
+setx CANON_PRINTER_NAME "Canon SELPHY CP1000"
+```
+
+Sau khi chạy `setx`, hãy mở PowerShell mới rồi chạy `npm run dev`. Không cần dùng đồng thời `setx` và `$env:CANON_PRINTER_NAME`.
+
+#### 3. Thực hiện lệnh in
+
+1. Chụp ảnh trên photobooth.
+2. Ở trang kết quả, nhấn **IN ẢNH**.
+3. Nhập tên khách.
+4. Nhân viên kiểm tra thanh toán.
+5. Nhấn **XÁC NHẬN ĐÃ THANH TOÁN & IN**.
+
+Ảnh được copy vào hàng đợi tại:
+
+```text
+api/data/print-queue/TenKhach-YYYYMMDD-HHMMSS.jpg
+```
+
+Nếu `CANON_PRINTER_NAME` được cấu hình, API sẽ gửi file này tới máy in. Nếu chưa cấu hình hoặc máy in chưa kết nối, ảnh vẫn được lưu trong `print-queue` để in thủ công.
+
+#### 4. Xử lý lỗi thường gặp
+
+- **Không thấy máy in trong `Get-Printer`**: cài lại driver, kiểm tra USB và thử in từ Windows.
+- **Tên máy in không khớp**: copy lại chính xác tên từ cột `Name`, sau đó khởi động lại API.
+- **Ảnh được lưu nhưng không tự in**: kiểm tra `CANON_PRINTER_NAME` trong đúng cửa sổ PowerShell đang chạy API.
+- **In sai khổ hoặc có lề**: kiểm tra paper size và borderless setting trong driver Canon/Windows Printer Preferences.
+- **API báo `Print failed`**: kiểm tra hàng đợi in của Windows, trạng thái máy in và xem máy in có đang bị Offline/Paused không.
+
+QR thanh toán dùng file `web/public/payment-qr.png` (PNG, khuyến nghị 400×400px).
+
+Các biến môi trường API:
+
+- `PUBLIC_BASE_URL`: URL public để QR trỏ đúng khi deploy.
+- `PORT`: cổng API, mặc định `8787`.
+- `CANON_PRINTER_NAME`: tên máy in Windows lấy từ `Get-Printer`.
+
+Khung web nằm ở `web/public/frames/` (`blueframe.png`, `redframe.png`, `rbs-strip.png`).
 
 Khung web nằm ở `web/public/frames/` (`blueframe.png`, `redframe.png`, `rbs-strip.png`).
 
