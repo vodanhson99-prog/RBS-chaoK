@@ -1,12 +1,8 @@
 import { HandLandmarker } from '@mediapipe/tasks-vision'
-import { createHandLandmarker, getIndexTip } from './hands'
-import { QuadDrawer } from './quadDrawer'
-import type { Pt } from './geom'
+import { createHandLandmarker, getTrackedHands, type TrackedHand } from './hands'
 
 export type FrameInfo = {
-  drawer: QuadDrawer
-  tip: Pt | null
-  label: string | null
+  hands: TrackedHand[]
   now: number
   frame: HTMLCanvasElement
 }
@@ -38,7 +34,6 @@ export async function runCaptureLoop(
   onFrame: (info: FrameInfo) => void,
 ): Promise<() => void> {
   const landmarker: HandLandmarker = await createHandLandmarker()
-  const drawer = new QuadDrawer()
   const work = document.createElement('canvas')
   let running = true
   let lastTs = -1
@@ -57,16 +52,12 @@ export async function runCaptureLoop(
       const ts = Math.max(now, lastTs + 1)
       lastTs = ts
       const result = landmarker.detectForVideo(work, ts)
-      const found = getIndexTip(result, work.width, work.height)
-      const tip = found?.tip ?? null
-      drawer.update(tip, now / 1000, work.width, work.height)
+      const hands = getTrackedHands(result, work.width, work.height)
 
       overlay.width = work.width
       overlay.height = work.height
       onFrame({
-        drawer,
-        tip,
-        label: found?.label ?? null,
+        hands,
         now: now / 1000,
         frame: work,
       })

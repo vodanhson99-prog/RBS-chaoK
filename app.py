@@ -48,7 +48,7 @@ MIN_SIDE_PX = 50
 DWELL_SECONDS = 0.55          # hold still to pin a corner
 MOVE_TOLERANCE_PX = 28        # max jitter while dwelling
 MIN_CORNER_GAP_PX = 55        # next corner must be far enough from previous
-COUNTDOWN_SECONDS = 2.0
+COUNTDOWN_SECONDS = 7.0
 COOLDOWN_SECONDS = 2.5
 WINDOW_NAME = "Hand Frame Capture"
 
@@ -374,7 +374,7 @@ def draw_ui(
     view = cv2.addWeighted(overlay, 0.55, view, 0.45, 0)
 
     title = "Index Frame Capture"
-    hint = "Hold index tip: pin 4 corners | M: frame | R: reset | SPACE: snap | D: debug"
+    hint = "Hold index tip: pin 4 corners | M: frame | R: reset | D: debug"
     cv2.putText(view, title, (16, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
     cv2.putText(view, hint, (16, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (200, 200, 200), 1)
     frame_text = f"Frame: {frame_name}"
@@ -540,14 +540,7 @@ def main() -> None:
             else:
                 drawer.update(tip, now, w, h)
 
-                if drawer.invalid_message:
-                    status = drawer.invalid_message
-                elif tip is None:
-                    status = "Show one index finger (left or right) to start drawing"
-                elif drawer.ready_quad is None:
-                    n = len(drawer.corners)
-                    status = f"Pin corner {n + 1}/4 — hold index tip still ({hand_label or 'hand'})"
-                else:
+                if drawer.ready_quad is not None:
                     if countdown_end is None:
                         countdown_end = now + COUNTDOWN_SECONDS
                     remaining = countdown_end - now
@@ -562,6 +555,13 @@ def main() -> None:
                     else:
                         countdown_val = max(1, int(np.ceil(remaining)))
                         status = "Frame ready — counting down"
+                elif drawer.invalid_message:
+                    status = drawer.invalid_message
+                elif tip is None:
+                    status = "Show one index finger (left or right) to start drawing"
+                else:
+                    n = len(drawer.corners)
+                    status = f"Pin corner {n + 1}/4 — hold index tip still ({hand_label or 'hand'})"
 
             flash = max(0.0, (flash_until - now) / 0.25) if now < flash_until else 0.0
 
@@ -594,14 +594,6 @@ def main() -> None:
                     frame_path, (out_w, out_h), args.keep_bottom
                 )
                 print(f"Frame overlay: {frame_path.name}")
-            if key == ord(" ") and drawer.ready_quad is not None and not in_cooldown:
-                last_saved = save_capture(
-                    apply_frame(warp_quad(frame, drawer.ready_quad), overlay)
-                )
-                last_capture_at = now
-                flash_until = now + 0.25
-                countdown_end = None
-                drawer.reset()
     finally:
         cap.release()
         landmarker.close()

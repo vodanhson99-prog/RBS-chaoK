@@ -2,11 +2,21 @@ import { FilesetResolver, HandLandmarker, type HandLandmarkerResult } from '@med
 import type { Pt } from './geom'
 
 const INDEX_TIP = 8
+const TIPS = [8, 12, 16, 20]
+const PALM = [0, 5, 9, 13, 17]
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
 const MODEL =
   'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
 
 let landmarker: HandLandmarker | null = null
+
+export type TrackedHand = {
+  label: string
+  wrist: Pt
+  tips: Pt[]
+  tipCentroid: Pt
+  palm: Pt
+}
 
 export async function createHandLandmarker(): Promise<HandLandmarker> {
   if (landmarker) return landmarker
@@ -32,26 +42,49 @@ export async function createHandLandmarker(): Promise<HandLandmarker> {
   return landmarker
 }
 
+function mean(pts: Pt[]): Pt {
+  const n = pts.length || 1
+  return {
+    x: pts.reduce((s, p) => s + p.x, 0) / n,
+    y: pts.reduce((s, p) => s + p.y, 0) / n,
+  }
+}
+
+function lmToPt(
+  hand: { x: number; y: number }[],
+  i: number,
+  width: number,
+  height: number,
+): Pt {
+  return { x: hand[i].x * width, y: hand[i].y * height }
+}
+
+export function getTrackedHands(
+  result: HandLandmarkerResult,
+  width: number,
+  height: number,
+): TrackedHand[] {
+  if (!result.landmarks?.length) return []
+  const out: TrackedHand[] = []
+  for (let i = 0; i < result.landmarks.length; i++) {
+    const hand = result.landmarks[i]
+    const wrist = lmToPt(hand, 0, width, height)
+    const tips = TIPS.map((t) => lmToPt(hand, t, width, height))
+    const palm = mean(PALM.map((t) => lmToPt(hand, t, width, height)))
+    const raw = result.handedness?.[i]?.[0]?.categoryName ?? 'Hand'
+    const label = raw === 'Left' ? 'Right' : raw === 'Right' ? 'Left' : raw
+    out.push({ label, wrist, tips, tipCentroid: mean(tips), palm })
+  }
+  return out
+}
+
 export function getIndexTip(
   result: HandLandmarkerResult,
   width: number,
   height: number,
 ): { tip: Pt; label: string } | null {
-  if (!result.landmarks?.length) return null
-  let bestTip: Pt | null = null
-  let bestLabel = 'Hand'
-  let bestY = Infinity
-  for (let i = 0; i < result.landmarks.length; i++) {
-    const hand = result.landmarks[i]
-    const lm = hand[INDEX_TIP]
-    const tip = { x: lm.x * width, y: lm.y * height }
-    const raw = result.handedness?.[i]?.[0]?.categoryName ?? 'Hand'
-    const label = raw === 'Left' ? 'Right' : raw === 'Right' ? 'Left' : raw
-    if (tip.y < bestY) {
-      bestY = tip.y
-      bestTip = tip
-      bestLabel = label
-    }
-  }
-  return bestTip ? { tip: bestTip, label: bestLabel } : null
+  const hands = getTrackedHands(result, width, height)
+  if (!hands.length) return null
+  const top = hands.reduce((a, b) => (a.tips[0].y < b.tips[0].y ? a : b))
+  return { tip: top.tips.find((_, i) => TIPS[i] === INDEX_TIP) ?? top.tips[0], label: top.label }
 }

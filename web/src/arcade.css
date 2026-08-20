@@ -1,0 +1,167 @@
+.arcade-title {
+  position: relative;
+  isolation: isolate;
+  animation: arcade-neon 1.7s ease-in-out infinite;
+}
+.arcade-title::before,
+.arcade-title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.arcade-title.is-glitch {
+  animation: arcade-jitter 0.15s steps(2, end);
+}
+.arcade-title.is-glitch::before,
+.arcade-title.is-glitch::after {
+  opacity: 0.85;
+}
+.arcade-title.is-glitch::before {
+  color: #ff2a2a;
+  text-shadow: none;
+  transform: translate(-3px, 0);
+  clip-path: inset(0 0 55% 0);
+  z-index: -1;
+}
+.arcade-title.is-glitch::after {
+  color: #00f0ff;
+  text-shadow: none;
+  transform: translate(3px, 0);
+  clip-path: inset(45% 0 0 0);
+  z-index: -1;
+}
+
+@keyframes arcade-neon {
+  0%, 100% {
+    color: #ffe14d;
+    text-shadow:
+      4px 4px 0 #111,
+      0 0 6px #7cff6b,
+      0 0 0 transparent;
+  }
+  50% {
+    color: #c8ff4a;
+    text-shadow:
+      4px 4px 0 #111,
+      0 0 10px #1f7a18,
+      0 0 18px #7cff6b;
+  }
+}
+@keyframes arcade-jitter {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(3px, -1px); }
+  50% { transform: translate(-3px, 1px); }
+  75% { transform: translate(2px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+.arcade-meter {
+  position: relative;
+  overflow: hidden;
+}
+.arcade-meter .meter-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: repeating-linear-gradient(
+    90deg,
+    #3ddc84 0 10px,
+    #ffe14d 10px 20px,
+    #ff5c7a 20px 30px
+  );
+  animation: arcade-meter-steps 2.4s steps(8, end) infinite;
+}
+@keyframes arcade-meter-steps {
+  0% { transform: scaleX(0.18); }
+  50% { transform: scaleX(1); }
+  100% { transform: scaleX(0.18); }
+}
+
+.tilt-root {
+  perspective: 1000px;
+  display: flex;
+  justify-content: center;
+}
+.tilt-inner {
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 80ms linear;
+}
+.card.frame-card img {
+  image-rendering: pixelated;
+}
+.card.flip-in {
+  animation: arcade-flip 0.42s steps(6, end) both;
+}
+@keyframes arcade-flip {
+  0% { transform: rotateY(90deg) scale(0.95); }
+  40% { transform: rotateY(-12deg) scale(1.06); }
+  70% { transform: rotateY(6deg) scale(1.02); }
+  100% { transform: rotateY(0) scale(1); }
+}
+
+.card.compact.selected {
+  animation: arcade-march 0.7s steps(4, end) infinite;
+  outline: 3px dashed #111;
+  outline-offset: 2px;
+}
+@keyframes arcade-march {
+  0% { outline-color: #111; box-shadow: 4px 4px 0 #111, 0 0 0 #ff94b8; }
+  50% { outline-color: #ff94b8; box-shadow: 4px 4px 0 #111, 0 0 8px #ff94b8; }
+  100% { outline-color: #111; box-shadow: 4px 4px 0 #111, 0 0 0 #ff94b8; }
+}
+
+.win.arcade-panel {
+  transition: box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.win.arcade-panel:hover {
+  box-shadow: 4px 4px 0 #000, 0 0 12px #ff94b8;
+}
+
+.pixel-howto .kw {
+  background: #ffe14d;
+  box-shadow: 2px 2px 0 #111;
+  padding: 0 3px;
+  transition: background 160ms ease, color 160ms ease;
+}
+.pixel-howto .kw:hover {
+  background: #ff94b8;
+  color: #111;
+}
+.type-cursor {
+  display: inline-block;
+  width: 0.55ch;
+  margin-left: 1px;
+  animation: arcade-blink 0.8s steps(1, end) infinite;
+  font-weight: 700;
+}
+@keyframes arcade-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.info-body strong {
+  animation: arcade-breathe 2s ease-in-out infinite;
+  transform-origin: left center;
+}
+@keyframes arcade-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-title,
+  .arcade-title.is-glitch,
+  .arcade-meter .meter-fill,
+  .card.flip-in,
+  .card.compact.selected,
+  .info-body strong,
+  .type-cursor {
+    animation: none !important;
+  }
+  .tilt-inner { transform: none !important; transition: none; }
+  .win.arcade-panel:hover { box-shadow: 6px 6px 0 #111; }
+}

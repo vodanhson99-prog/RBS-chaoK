@@ -185,3 +185,12 @@ export function coverDraw(
   ctx.drawImage(img, x, y, w, h)
   ctx.restore()
 }
+
+export function cropTo169(source: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement('canvas')
+  out.width = OUTPUT_W
+  out.height = OUTPUT_H
+  const ctx = out.getContext('2d')!
+  coverDraw(ctx, source, 0, 0, OUTPUT_W, OUTPUT_H, source.width, source.height)
+  return out
+}

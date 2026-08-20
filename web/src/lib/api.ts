@@ -49,3 +49,20 @@ export async function fetchSession(token: string): Promise<SessionMeta> {
 export function sessionImageUrl(token: string): string {
   return `/api/sessions/${token}/image`
 }
+
+export type PrintJobResult = {
+  ok: boolean
+  file?: string
+  error?: string
+}
+
+export async function requestPrint(token: string, customerName: string): Promise<PrintJobResult> {
+  const res = await fetch('/api/print', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, customerName }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || `Print failed (${res.status})`)
+  return data as PrintJobResult
+}

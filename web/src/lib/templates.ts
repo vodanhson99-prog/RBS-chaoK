@@ -22,9 +22,9 @@ export const TEMPLATES: Template[] = [
     kind: 'single',
   },
   {
-    id: 'woozi',
-    name: 'Woozi strip ×6',
-    src: '/frames/woozi-strip.png',
+    id: 'rbs',
+    name: 'RBS K42 strip ×6',
+    src: '/frames/rbs-strip.png',
     kind: 'strip6',
   },
 ]

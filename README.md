@@ -15,15 +15,34 @@ npm run dev
 
 Mở http://localhost:5173
 
-- Chọn template: Navy/Maroon 16:9 hoặc Woozi strip ×6
-- Giơ ngón trỏ, giữ yên 4 góc → countdown → chụp (không vẽ MediaPipe lên ảnh lưu)
+- Chọn template: Navy/Maroon 16:9 hoặc RBS strip ×6
+- Giơ **hai tay**, tạo **chữ S lật ngược** (tay trên cong trái, tay dưới cong phải) → khóa pose → countdown 7s → chụp
 - Strip: 6 shot liên tiếp, ghép vào khung, Retake last
-- `M` đổi khung, `R` reset góc, `Space` chụp ngay
+- `M` đổi khung, `R` hủy pose / countdown
 - Upload API (`:8787`) lưu JPEG 48 giờ → trang kết quả có QR `/p/:token`
 
-Biến môi trường API: `PUBLIC_BASE_URL` (URL public để QR trỏ đúng khi deploy), `PORT` (mặc định 8787).
+### In anh (Canon SELPHY CP1000)
 
-Khung web nằm ở `web/public/frames/` (`blueframe.png`, `redframe.png`, `woozi-strip.png`).
+1. Cam may in USB vao may Windows dang chay API.
+2. Cai Canon CP1000 driver, kiem tra may in xuat hien trong Windows Settings > Printers.
+3. Lay ten may in chinh xac (vd `Canon SELPHY CP1000`):
+   ```powershell
+   Get-Printer | Select-Object Name
+   ```
+4. Dat bien moi truong truoc khi chay:
+   ```powershell
+   $env:CANON_PRINTER_NAME="Canon SELPHY CP1000"
+   npm run dev
+   ```
+5. Thay file `web/public/payment-qr.png` bang anh QR chuyen khoan cua ban (PNG, khuyen nghi 400×400px).
+6. Tren man hinh ket qua, bam **IN ANH** → khach nhap ten → nhan vien kiem tra thanh toan → bam **XAC NHAN DA THANH TOAN & IN**.
+7. Anh duoc luu tai `api/data/print-queue/TenKhach-YYYYMMDD-HHMMSS.jpg` va gui lenh in toi may in.
+
+Neu khong dat `CANON_PRINTER_NAME`, anh van duoc luu vao thu muc `print-queue` nhung khong gui lenh in (co the in thu cong).
+
+Bien moi truong API: `PUBLIC_BASE_URL` (URL public de QR tro dung khi deploy), `PORT` (mac dinh 8787), `CANON_PRINTER_NAME` (ten may in Windows).
+
+Khung web nằm ở `web/public/frames/` (`blueframe.png`, `redframe.png`, `rbs-strip.png`).
 
 ## Desktop Python
 
@@ -63,7 +82,7 @@ python app.py --keep-bottom 0.15          # giữ opaque 15% dưới đáy (khun
 1. Đứng trước webcam (cửa sổ dạng gương).
 2. Giơ **một đầu ngón trỏ** (trái hoặc phải).
 3. Di chuyển tới mỗi góc khung hình, **giữ yên ~0.5s** để ghim góc (1 → 2 → 3 → 4).
-4. Khi đủ 4 góc hợp lệ → đếm ngược → chụp.
+4. Khi đủ 4 góc hợp lệ → đếm ngược **7 giây** rồi chụp tự động.
 5. Ảnh lưu tại `captures/capture_YYYYMMDD_HHMMSS.jpg` (**1920×1080**, đã ghép khung trang trí, không có overlay MediaPipe).
 
 ## Khung trang trí
@@ -91,7 +110,6 @@ Nếu artwork có **dải đen thiết kế sẵn dính liền với nền đen*
 | `Q` / `Esc` | Thoát |
 | `R` | Xóa góc đã ghim, vẽ lại |
 | `M` | Chuyển sang khung PNG tiếp theo trong `frames/` |
-| `Space` | Chụp ngay khi đã có tứ giác hợp lệ |
 | `D` | Bật/tắt overlay landmark |
 
 ## Ghi chú

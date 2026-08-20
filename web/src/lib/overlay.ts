@@ -6,6 +6,14 @@ function luminance(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b
 }
 
+/** Grey or near-black photo windows on a strip template. */
+function isSlotPixel(r: number, g: number, b: number): boolean {
+  const spread = Math.max(r, g, b) - Math.min(r, g, b)
+  if (spread >= 32) return false
+  const lum = luminance(r, g, b)
+  return lum <= 42 || (lum >= 145 && lum <= 235)
+}
+
 function connectedComponents(
   mask: Uint8Array,
   w: number,
@@ -42,10 +50,6 @@ function connectedComponents(
         push(cx - 1, cy)
         push(cx, cy + 1)
         push(cx, cy - 1)
-        push(cx + 1, cy + 1)
-        push(cx - 1, cy + 1)
-        push(cx + 1, cy - 1)
-        push(cx - 1, cy - 1)
       }
     }
   }
@@ -151,23 +155,18 @@ export function detectGreySlots(art: HTMLCanvasElement, want = 6): Rect[] {
   const { data } = ctx.getImageData(0, 0, w, h)
   const mask = new Uint8Array(w * h)
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-    const r = data[i]
-    const g = data[i + 1]
-    const b = data[i + 2]
-    const spread = Math.max(r, g, b) - Math.min(r, g, b)
-    const lum = luminance(r, g, b)
-    mask[p] = spread < 28 && lum >= 145 && lum <= 235 ? 1 : 0
+    mask[p] = isSlotPixel(data[i], data[i + 1], data[i + 2]) ? 1 : 0
   }
 
   const { labels, count, areas } = connectedComponents(mask, w, h)
-  const minArea = w * h * 0.015
+  const minArea = w * h * 0.008
   const candidates: { lab: number; area: number; rect: Rect }[] = []
   for (let lab = 1; lab <= count; lab++) {
     if (areas[lab] < minArea) continue
     const rect = bboxForLabel(labels, lab, w, h)
     const fill = areas[lab] / (rect.w * rect.h)
     const aspect = rect.w / rect.h
-    if (fill < 0.7 || aspect < 0.9 || aspect > 2.4) continue
+    if (fill < 0.62 || aspect < 0.72 || aspect > 2.6) continue
     candidates.push({ lab, area: areas[lab], rect })
   }
 
@@ -220,12 +219,7 @@ export function overlayFromGreySlots(art: HTMLCanvasElement, slots: Rect[]): HTM
   const mask = new Uint8Array(w * h)
   const { data } = src
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-    const r = data[i]
-    const g = data[i + 1]
-    const b = data[i + 2]
-    const spread = Math.max(r, g, b) - Math.min(r, g, b)
-    const lum = luminance(r, g, b)
-    mask[p] = spread < 28 && lum >= 145 && lum <= 235 ? 1 : 0
+    mask[p] = isSlotPixel(data[i], data[i + 1], data[i + 2]) ? 1 : 0
   }
 
   for (const slot of slots) {

@@ -128,6 +128,85 @@ app.get('/api/sessions/:token/image', async (req, reply) => {
   }
 })
 
+/* ── Print queue ─────────────────────────────── */
+const PRINT_DIR = path.join(ROOT, 'data', 'print-queue')
+await fs.mkdir(PRINT_DIR, { recursive: true })
+
+const PRINTER_NAME = process.env.CANON_PRINTER_NAME || ''
+let printBusy = false
+
+function sanitizeName(raw) {
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 _-]/g, '')
+    .replace(/\s+/g, '')
+    .slice(0, 40) || 'guest'
+}
+
+function timestampStr() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+app.post('/api/print', async (req, reply) => {
+  const { token: id, customerName } = req.body || {}
+  if (!id || typeof id !== 'string') return reply.code(400).send({ error: 'Missing token' })
+  if (!customerName || typeof customerName !== 'string' || !customerName.trim())
+    return reply.code(400).send({ error: 'Missing customer name' })
+
+  const metaPath = path.join(DATA, `${id}.json`)
+  const imgPath = path.join(DATA, `${id}.jpg`)
+  try {
+    const raw = JSON.parse(await fs.readFile(metaPath, 'utf8'))
+    if (new Date(raw.expiresAt).getTime() < Date.now())
+      return reply.code(404).send({ error: 'Session expired' })
+  } catch {
+    return reply.code(404).send({ error: 'Session not found' })
+  }
+
+  const safeName = sanitizeName(customerName)
+  const filename = `${safeName}-${timestampStr()}.jpg`
+  const dest = path.join(PRINT_DIR, filename)
+
+  try {
+    await fs.copyFile(imgPath, dest)
+  } catch {
+    return reply.code(500).send({ error: 'Failed to queue print file' })
+  }
+
+  if (PRINTER_NAME) {
+    const waitForPrint = () =>
+      new Promise((resolve) => {
+        if (printBusy) {
+          const check = setInterval(() => {
+            if (!printBusy) { clearInterval(check); resolve() }
+          }, 500)
+        } else resolve()
+      })
+    await waitForPrint()
+    printBusy = true
+    try {
+      const { execFile } = await import('node:child_process')
+      const { promisify } = await import('node:util')
+      const execFileAsync = promisify(execFile)
+      const psScript = path.join(ROOT, 'print-image.ps1')
+      await execFileAsync('powershell', [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', psScript,
+        '-ImagePath', dest,
+        '-PrinterName', PRINTER_NAME,
+      ], { timeout: 120_000 })
+    } catch (e) {
+      printBusy = false
+      return reply.code(500).send({ ok: false, error: `Print failed: ${e.message}`, file: filename })
+    }
+    printBusy = false
+  }
+
+  return { ok: true, file: filename }
+})
+
 const port = Number(process.env.PORT || 8787)
 await app.listen({ port, host: '0.0.0.0' })
 console.log(`photobooth api on :${port}`)
