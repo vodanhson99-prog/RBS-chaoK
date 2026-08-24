@@ -116,9 +116,7 @@ export default function Booth() {
         const blob = await canvasToJpegBlob(composed)
         const session = await uploadSession(blob)
         if (!cancelled) {
-          navigate(`/result/${session.token}`, {
-            state: { preview: composed.toDataURL('image/jpeg', 0.85) },
-          })
+          navigate(`/result/${session.token}`)
         }
       } catch (e) {
         busyRef.current = false

@@ -218,11 +218,14 @@ export async function loadImage(src: string): Promise<HTMLImageElement> {
   return img
 }
 
-export function rasterizeImage(img: HTMLImageElement): HTMLCanvasElement {
+export function rasterizeImage(img: HTMLImageElement, scale = 1): HTMLCanvasElement {
   const c = document.createElement('canvas')
-  c.width = img.naturalWidth
-  c.height = img.naturalHeight
-  c.getContext('2d')!.drawImage(img, 0, 0)
+  c.width = Math.max(1, Math.round(img.naturalWidth * scale))
+  c.height = Math.max(1, Math.round(img.naturalHeight * scale))
+  const ctx = c.getContext('2d')!
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, 0, 0, c.width, c.height)
   return c
 }
 
@@ -390,6 +393,8 @@ export function applyOverlay(
   out.width = overlay.width
   out.height = overlay.height
   const ctx = out.getContext('2d')!
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(photo, 0, 0, out.width, out.height)
   ctx.drawImage(overlay, 0, 0)
   return out

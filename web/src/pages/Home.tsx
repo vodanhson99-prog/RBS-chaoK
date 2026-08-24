@@ -8,10 +8,10 @@ import { TEMPLATES, type TemplateKind } from '../lib/templates'
 
 const FRAME_TABS: Array<{ kind: TemplateKind; label: string; sublabel: string }> = [
   { kind: 'single', label: '16:9 FRAMES', sublabel: 'ONE SHOT · WIDE FORMAT' },
-  { kind: 'strip', label: 'PHOTO STRIPS', sublabel: 'FOUR OR SIX SHOTS · VERTICAL FORMAT' },
+  { kind: 'strip', label: 'PHOTO STRIPS', sublabel: 'TWO, FOUR OR SIX SHOTS · VERTICAL FORMAT' },
 ]
 
-const PLACEHOLDER_SLOTS = [0, 1, 2, 3]
+const PLACEHOLDER_SLOTS: number[] = []
 
 const HOWTO = [
   'Đứng trước camera, giơ hai bàn tay.',

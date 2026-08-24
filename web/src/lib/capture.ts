@@ -35,8 +35,9 @@ export async function startCamera(
   deviceId?: string,
 ): Promise<MediaStream> {
   const videoConstraints: MediaTrackConstraints = {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    aspectRatio: { ideal: 16 / 9 },
     ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }),
   }
   const stream = await navigator.mediaDevices.getUserMedia({

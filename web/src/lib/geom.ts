@@ -2,6 +2,11 @@ export type Pt = { x: number; y: number }
 
 export const OUTPUT_W = 1920
 export const OUTPUT_H = 1080
+
+// Keep downloaded artwork at a useful phone-friendly size, even when a frame
+// asset itself was exported at a small preview resolution.
+export const MIN_OUTPUT_LONG_EDGE = 2048
+
 export const MIN_AREA_RATIO = 0.03
 export const MAX_AREA_RATIO = 0.9
 export const MIN_SIDE_PX = 50
@@ -218,6 +223,8 @@ export function cropTo169(source: HTMLCanvasElement): HTMLCanvasElement {
   out.width = OUTPUT_W
   out.height = OUTPUT_H
   const ctx = out.getContext('2d')!
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   coverDraw(ctx, source, 0, 0, OUTPUT_W, OUTPUT_H, source.width, source.height)
   return out
 }

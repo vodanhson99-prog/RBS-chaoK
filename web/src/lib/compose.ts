@@ -1,4 +1,4 @@
-import { coverDraw, warpQuad, type Pt } from './geom'
+import { coverDraw, MIN_OUTPUT_LONG_EDGE, warpQuad, type Pt } from './geom'
 import {
   applyOverlay,
   buildOverlayCanvas,
@@ -41,7 +41,9 @@ export async function loadTemplateAssets(template: Template) {
   if (hit) return hit
 
   const img = await loadImage(template.src)
-  const art = rasterizeImage(img)
+  const longEdge = Math.max(img.naturalWidth, img.naturalHeight)
+  const scale = Math.max(1, MIN_OUTPUT_LONG_EDGE / longEdge)
+  const art = rasterizeImage(img, scale)
   let overlay: HTMLCanvasElement
   let slots: Rect[] = []
 
@@ -76,6 +78,8 @@ export function composeStrip(
   out.width = overlay.width
   out.height = overlay.height
   const ctx = out.getContext('2d')!
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.fillStyle = '#111'
   ctx.fillRect(0, 0, out.width, out.height)
 
@@ -88,7 +92,7 @@ export function composeStrip(
   return out
 }
 
-export function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Blob> {
+export function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.96): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('encode failed'))),
