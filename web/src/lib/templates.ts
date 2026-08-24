@@ -39,13 +39,6 @@ const ROBOTICS_GRAY_TWO_SLOTS: TemplateSlot[] = [
   { x: 63 / 682, y: 607 / 1024, w: 561 / 682, h: 330 / 1024 },
 ]
 
-const MUSIC_FOUR_SLOTS: TemplateSlot[] = [
-  { x: 17 / 220, y: 15 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
-  { x: 17 / 220, y: 161 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
-  { x: 17 / 220, y: 307 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
-  { x: 17 / 220, y: 453 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
-]
-
 const NAVY_FOUR_SLOTS: TemplateSlot[] = [
   { x: 11 / 248, y: 9 / 742, w: 226 / 248, h: 140 / 742, radius: 10 / 248 },
   { x: 11 / 248, y: 160 / 742, w: 226 / 248, h: 140 / 742, radius: 10 / 248 },
@@ -103,14 +96,6 @@ export const TEMPLATES: Template[] = [
     src: '/frames/robotics-two-gray.png',
     kind: 'strip',
     photoSlots: ROBOTICS_GRAY_TWO_SLOTS,
-    photoSlotMode: 'cutout',
-  },
-  {
-    id: 'music-four-strip',
-    name: 'Join With Me — 4 shot',
-    src: '/frames/music-four-strip.png',
-    kind: 'strip',
-    photoSlots: MUSIC_FOUR_SLOTS,
     photoSlotMode: 'cutout',
   },
   {
