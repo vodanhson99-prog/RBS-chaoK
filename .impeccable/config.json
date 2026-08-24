@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "codex-grid-background",
+        "value": "16px 16px",
+        "files": [
+          "web/src/index.css"
+        ],
+        "createdAt": "2026-08-19T22:49:04.737Z",
+        "reason": "user confirmed: pixel photobooth aesthetic requires retro grid overlay per DESIGN.md Spark Pixel"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "web/src/index.css"
+        ],
+        "createdAt": "2026-08-19T22:49:22.035Z",
+        "reason": "user confirmed: retro pixel grid overlay is intentional Spark Pixel booth aesthetic per DESIGN.md"
+      }
+    ]
+  }
+}

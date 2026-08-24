@@ -1,10 +1,16 @@
 {
   "name": "rbs-chaok",
   "private": true,
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix api\" \"npm run dev --prefix web\"",
     "dev:web": "npm run dev --prefix web",
-    "dev:api": "npm run dev --prefix api"
+    "dev:api": "npm run dev --prefix api",
+    "worker:print": "npm run start --prefix worker",
+    "backup:data": "node scripts/backup-data.mjs",
+    "test:api": "npm test --prefix api"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

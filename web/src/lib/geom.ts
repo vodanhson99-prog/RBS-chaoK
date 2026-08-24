@@ -1,7 +1,7 @@
 export type Pt = { x: number; y: number }
 
-export const OUTPUT_W = 1920
-export const OUTPUT_H = 1080
+export const OUTPUT_W = 2560
+export const OUTPUT_H = 1440
 export const MIN_AREA_RATIO = 0.03
 export const MAX_AREA_RATIO = 0.9
 export const MIN_SIDE_PX = 50
@@ -179,6 +179,8 @@ export function coverDraw(
   const x = dx + (dw - w) / 2
   const y = dy + (dh - h) / 2
   ctx.save()
+  ctx.imageSmoothingEnabled = true
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high'
   ctx.beginPath()
   ctx.rect(dx, dy, dw, dh)
   ctx.clip()

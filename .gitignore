@@ -9,6 +9,8 @@ captures/*.png
 *.log
 web/node_modules/
 web/dist/
+web/.next/
 api/node_modules/
 api/data/sessions/*
 !api/data/sessions/.gitkeep
+api/.env.local

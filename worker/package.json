@@ -1,0 +1,8 @@
+{
+  "name": "rbs-print-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node print-worker.mjs"
+  }
+}

@@ -1,101 +1,93 @@
-# Hand Frame Capture
+# RBS Photobooth
 
-Desktop Python booth **và** web photobooth (MediaPipe trên trình duyệt, 6-shot strip, QR download).
+Web photobooth cho sự kiện: webcam, MediaPipe gesture capture, frame library, QR download, mobile sticker edit và print queue.
 
-## Web photobooth
+## Kiến trúc hiện tại
 
-Cần Node 18+, webcam, **HTTPS hoặc localhost** (camera).
+- `web/`: Next.js 16 App Router + React + TypeScript frontend.
+- `api/`: Fastify 5 API chạy trên Node.js 20.19+.
+- `api/src/data/`: filesystem persistence cho photos, tokens, edits, print jobs và custom frames. Không có database hoặc object-storage service trong runtime hiện tại.
+- `worker/`: print worker riêng, poll job đã thanh toán và gửi file tới máy in qua `lp`.
+- `packages/contracts/`: các payload TypeScript dùng chung giữa frontend và backend.
 
-```bash
-npm install
-cd api && npm install && cd ../web && npm install
-cd ..
-npm run dev
-```
-
-Mở http://localhost:5173
-
-- Chọn template: Navy/Maroon 16:9 hoặc Woozi strip ×6
-- Giơ ngón trỏ, giữ yên 4 góc → countdown → chụp (không vẽ MediaPipe lên ảnh lưu)
-- Strip: 6 shot liên tiếp, ghép vào khung, Retake last
-- `M` đổi khung, `R` reset góc, `Space` chụp ngay
-- Upload API (`:8787`) lưu JPEG 48 giờ → trang kết quả có QR `/p/:token`
-
-Biến môi trường API: `PUBLIC_BASE_URL` (URL public để QR trỏ đúng khi deploy), `PORT` (mặc định 8787).
-
-Khung web nằm ở `web/public/frames/` (`blueframe.png`, `redframe.png`, `woozi-strip.png`).
-
-## Desktop Python
-
+Ảnh và metadata là private theo token; public QR links dùng thời hạn truy cập QR, còn retention lưu asset lâu hơn để phục vụ download/print và vận hành.
 
 ## Yêu cầu
 
-- Python 3.9+
-- Webcam
+- Node.js 20.19+
+- Webcam và HTTPS hoặc `localhost` cho browser camera permission
+- `tar` cho backup
+- `lp` và máy in cấu hình sẵn nếu chạy print worker
 
-## Cài đặt
-
-```bash
-pip install -r requirements.txt
-```
-
-Model MediaPipe đã nằm sẵn tại `models/hand_landmarker.task`. Nếu thiếu, tải lại:
-
-https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
-
-## Chạy
+## Cài đặt và chạy development
 
 ```bash
-python app.py
+npm install
+npm install --prefix api
+npm install --prefix web
+npm run dev
 ```
 
-Tuỳ chọn:
+Lệnh này chạy API tại `http://localhost:8787` và Next.js tại `http://localhost:5173`.
+
+Các lệnh riêng:
 
 ```bash
-python app.py --debug                     # bật overlay 21 landmark kèm số thứ tự
-python app.py --frame frames/frame_01.png # chọn khung trang trí cụ thể
-python app.py --frame none                # chụp không ghép khung
-python app.py --keep-bottom 0.15          # giữ opaque 15% dưới đáy (khung nền đen full)
+npm run dev:api
+npm run dev:web
+npm test --prefix api
+npm run build --prefix web
+npm run lint --prefix web
+npm run worker:print
 ```
 
-## Cách dùng
+Mở `http://localhost:5173`, chọn frame, cho phép webcam, hoàn thành gesture capture và quét QR trên trang kết quả.
 
-1. Đứng trước webcam (cửa sổ dạng gương).
-2. Giơ **một đầu ngón trỏ** (trái hoặc phải).
-3. Di chuyển tới mỗi góc khung hình, **giữ yên ~0.5s** để ghim góc (1 → 2 → 3 → 4).
-4. Khi đủ 4 góc hợp lệ → đếm ngược → chụp.
-5. Ảnh lưu tại `captures/capture_YYYYMMDD_HHMMSS.jpg` (**1920×1080**, đã ghép khung trang trí, không có overlay MediaPipe).
+## Cấu hình API
 
-## Khung trang trí
+Copy `api/.env.example` thành file môi trường local nếu cần. Các nhóm cấu hình chính:
 
-Đặt file PNG vào thư mục `frames/`; app tự dùng file đầu tiên theo thứ tự tên.
-Trong lúc chạy, nhấn `M` để chuyển tuần tự qua tất cả file `.png` trong thư mục.
-Tên khung đang chọn hiển thị ở góc trên bên phải của cửa sổ camera.
+- `PHOTO_DATA_DIR`: thư mục persistence; mặc định `api/src/data`.
+- `PORT`: API port, mặc định `8787`.
+- `PUBLIC_WEB_BASE_URL` hoặc `PUBLIC_BASE_URL`: origin dùng trong QR/public links.
+- `CORS_ORIGINS`: danh sách origin được phép.
+- `PRINT_WORKER_SECRET`: secret cho print worker.
+- `INTERNAL_API_KEY`: secret cho routes vận hành nội bộ.
+- `PAYMENT_MODE=mock` chỉ dành cho development/test. Production phải dùng `PAYMENT_MODE=webhook`.
+- `PAYMENT_WEBHOOK_KEY`: bắt buộc khi `NODE_ENV=production`; provider-specific signature verification vẫn là boundary cần cấu hình theo provider thật.
 
-| File | Mô tả |
-|------|-------|
-| `frame_01.png` | Mặc định — viền tím than `#1E2347`, ô ảnh ở giữa |
-| `frame_maroon.png` | Bản nâu đỏ `#540606` |
-| `frame_old_black.png` | Bản nền đen full-bleed (cần `--keep-bottom 0.15`) |
+Production fail-closed: không được dùng `dev-print-worker`, `dev-internal-key`, mock payment, hoặc bỏ trống `PAYMENT_WEBHOOK_KEY`. Ứng dụng không tự sinh secret.
 
-- PNG **có alpha**: dùng trực tiếp kênh alpha.
-- PNG **không alpha**: **vùng đen liền lớn nhất** được coi là cửa sổ ảnh — dùng được cả khi nền đen phủ toàn bộ lẫn khi ô đen nằm giữa viền màu. Các mảng đen nhỏ hơn (ruột logo) vẫn giữ nguyên.
-- Khung được resize về đúng 1920×1080 trước khi ghép.
+## Backup và kiểm tra restore
 
-Nếu artwork có **dải đen thiết kế sẵn dính liền với nền đen**, dùng `--keep-bottom 0.15` để giữ opaque 15% dưới đáy. Mặc định tắt (`0`).
+Backup chỉ đóng gói `PHOTO_DATA_DIR`, không bao gồm `.env` files. Archive và checksum được ghi với tên dự đoán được:
 
-### Phím tắt
+```text
+backup-YYYYMMDDTHHMMSSZ-xxxxxxxx.tar.gz
+backup-YYYYMMDDTHHMMSSZ-xxxxxxxx.tar.gz.sha256
+```
 
-| Phím | Chức năng |
-|------|-----------|
-| `Q` / `Esc` | Thoát |
-| `R` | Xóa góc đã ghim, vẽ lại |
-| `M` | Chuyển sang khung PNG tiếp theo trong `frames/` |
-| `Space` | Chụp ngay khi đã có tứ giác hợp lệ |
-| `D` | Bật/tắt overlay landmark |
+Chạy backup:
 
-## Ghi chú
+```bash
+npm run backup:data
+```
 
-- Chỉ cần **1 tay / 1 ngón trỏ**.
-- Khung quá nhỏ / quá lớn / bị dẹt sẽ bị từ chối — nhấn `R` và vẽ lại.
-- Sau mỗi lần chụp có cooldown ngắn.
+Biến môi trường vận hành:
+
+```text
+BACKUP_DIR=./backups
+BACKUP_RETENTION_COUNT=7
+```
+
+Mỗi backup được checksum, extract vào thư mục tạm để kiểm tra các thư mục persistence (`photos`, `tokens`, `edits`, `idempotency`) rồi mới được xem là thành công. Quy trình này không restore đè lên data live. Backup cũ chỉ bị xóa khi khớp chính xác naming pattern và nằm trong `BACKUP_DIR`.
+
+## Storage consistency và retention
+
+Consistency scan là operational/manual path, không chạy lại toàn bộ storage trên mỗi request. Các quan hệ được kiểm tra gồm token index → photo, photo metadata → original/current asset, edit → photo/asset, idempotency → photo và malformed JSON. Chỉ repair được reservation idempotency stale khi kết quả xác định; corruption mơ hồ được báo cáo/quarantine, không tự động xóa.
+
+Retention bỏ qua record malformed, báo anomaly và tiếp tục xử lý các photo khác. Photo chỉ bị xóa khi `storedUntil` hợp lệ và đã hết hạn.
+
+## Không còn là runtime hiện tại
+
+Hướng dẫn Python/Vite cũ không còn mô tả ứng dụng đang chạy. Runtime hiện tại là Next.js 16 + Fastify 5 + filesystem persistence như phần kiến trúc ở trên.

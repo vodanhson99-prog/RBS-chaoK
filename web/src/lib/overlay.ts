@@ -90,6 +90,27 @@ export function rasterizeImage(img: HTMLImageElement): HTMLCanvasElement {
   return c
 }
 
+/** Rasterize directly at export size — critical for SVG (avoids tiny default decode). */
+export function rasterizeImageAtSize(
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+  mode: 'photo' | 'crisp' = 'photo',
+): HTMLCanvasElement {
+  const c = document.createElement('canvas')
+  c.width = width
+  c.height = height
+  const ctx = c.getContext('2d')!
+  ctx.imageSmoothingEnabled = mode === 'photo'
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, 0, 0, width, height)
+  return c
+}
+
+export function isVectorSrc(src: string): boolean {
+  return src.endsWith('.svg')
+}
+
 /** Overlay canvas with premultiplied-style alpha: 0 = photo shows through. */
 export function buildOverlayCanvas(
   art: HTMLCanvasElement,
@@ -206,6 +227,29 @@ function fallbackGrid(w: number, h: number, want: number): Rect[] {
   return out
 }
 
+export function overlayFromSlots(art: HTMLCanvasElement, slots: Rect[]): HTMLCanvasElement {
+  const { width: w, height: h } = art
+  const ctx = art.getContext('2d', { willReadFrequently: true })!
+  const src = ctx.getImageData(0, 0, w, h)
+  const out = document.createElement('canvas')
+  out.width = w
+  out.height = h
+  const octx = out.getContext('2d')!
+  const dest = octx.createImageData(w, h)
+  dest.data.set(src.data)
+  for (const slot of slots) {
+    const left = Math.max(0, Math.floor(slot.x))
+    const top = Math.max(0, Math.floor(slot.y))
+    const right = Math.min(w, Math.ceil(slot.x + slot.w))
+    const bottom = Math.min(h, Math.ceil(slot.y + slot.h))
+    for (let y = top; y < bottom; y++) {
+      for (let x = left; x < right; x++) dest.data[(y * w + x) * 4 + 3] = 0
+    }
+  }
+  octx.putImageData(dest, 0, 0)
+  return out
+}
+
 export function overlayFromGreySlots(art: HTMLCanvasElement, slots: Rect[]): HTMLCanvasElement {
   const { width: w, height: h } = art
   const ctx = art.getContext('2d', { willReadFrequently: true })!
@@ -243,12 +287,16 @@ export function overlayFromGreySlots(art: HTMLCanvasElement, slots: Rect[]): HTM
 export function applyOverlay(
   photo: HTMLCanvasElement,
   overlay: HTMLCanvasElement,
+  outW = overlay.width,
+  outH = overlay.height,
 ): HTMLCanvasElement {
   const out = document.createElement('canvas')
-  out.width = overlay.width
-  out.height = overlay.height
+  out.width = outW
+  out.height = outH
   const ctx = out.getContext('2d')!
-  ctx.drawImage(photo, 0, 0, out.width, out.height)
-  ctx.drawImage(overlay, 0, 0)
+  ctx.imageSmoothingEnabled = true
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(photo, 0, 0, outW, outH)
+  ctx.drawImage(overlay, 0, 0, outW, outH)
   return out
 }

@@ -1,0 +1,18 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic:
+      - generic: HOLD 950ms
+      - generic: CONF 0.78
+      - generic: FR 4
+    - link "← FRAMES" [ref=e4] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e5]: Navy 16:9
+    - generic [ref=e7]: 1×
+  - generic [ref=e10]:
+    - list [ref=e11]:
+      - listitem [ref=e12]: S
+      - listitem [ref=e13]: HOLD
+      - listitem [ref=e14]: POSE
+      - listitem [ref=e15]: GO
+    - paragraph [ref=e16]: Allow camera access
+  - button "RETAKE" [disabled] [ref=e19]

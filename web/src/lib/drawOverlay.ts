@@ -1,117 +1,108 @@
-import type { Pt } from './geom'
-import { QuadDrawer } from './quadDrawer'
+const SPARK = '#ff6117'
+const INK = '#eaeaea'
+const CHARCOAL = '#252525'
+
+function drawPixelBar(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  progress: number,
+): void {
+  const blocks = Math.max(1, Math.floor(w / 8))
+  const filled = Math.floor(blocks * progress)
+  for (let i = 0; i < blocks; i++) {
+    ctx.fillStyle = i < filled ? SPARK : 'rgba(58, 58, 58, 0.85)'
+    ctx.fillRect(x + i * 8, y, 6, h)
+  }
+}
+
+function drawPixelCountdown(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  digit: number,
+  remainingMs: number,
+): void {
+  const fontSize = Math.round(Math.min(w, h) * 0.11)
+  const cx = w / 2
+  const cy = h * 0.46
+
+  ctx.font = `${fontSize}px "Press Start 2P", monospace`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const text = String(digit)
+  const textW = ctx.measureText(text).width
+  const padX = Math.round(fontSize * 0.45)
+  const padY = Math.round(fontSize * 0.28)
+  const boxW = Math.ceil(textW + padX * 2)
+  const boxH = Math.ceil(fontSize + padY * 2)
+  const left = Math.round(cx - boxW / 2)
+  const top = Math.round(cy - boxH / 2)
+
+  ctx.fillStyle = '#000'
+  ctx.fillRect(left + 4, top + 4, boxW, boxH)
+
+  ctx.fillStyle = CHARCOAL
+  ctx.fillRect(left, top, boxW, boxH)
+
+  const blink = Math.floor(remainingMs / 220) % 2 === 0
+  ctx.strokeStyle = blink ? SPARK : INK
+  ctx.lineWidth = 4
+  ctx.strokeRect(left, top, boxW, boxH)
+
+  ctx.strokeStyle = '#3a3a3a'
+  ctx.lineWidth = 2
+  ctx.strokeRect(left + 3, top + 3, boxW - 6, boxH - 6)
+
+  ctx.fillStyle = SPARK
+  ctx.fillText(text, cx, cy)
+
+  const barY = top + boxH + 10
+  const secondFrac = (remainingMs % 1000) / 1000
+  drawPixelBar(ctx, left, barY, boxW, 8, secondFrac)
+
+  ctx.textAlign = 'start'
+  ctx.textBaseline = 'alphabetic'
+}
 
 export function drawBoothOverlay(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  drawer: QuadDrawer,
-  tip: Pt | null,
-  status: string,
-  frameName: string,
-  countdown: number | null,
-  flash: number,
-  shotLabel: string,
+  options: {
+    holdProgress: number
+    countdown: number | null
+    countdownRemainingMs: number | null
+    flash: number
+    isLetterS: boolean
+    showHoldBar: boolean
+  },
 ): void {
-  if (drawer.trail.length >= 2) {
-    ctx.strokeStyle = 'rgba(220,220,220,0.6)'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(drawer.trail[0].x, drawer.trail[0].y)
-    for (const p of drawer.trail) ctx.lineTo(p.x, p.y)
-    ctx.stroke()
+  const { holdProgress, countdown, countdownRemainingMs, flash, isLetterS, showHoldBar } = options
+
+  ctx.imageSmoothingEnabled = false
+
+  if (countdown !== null && countdown > 0 && countdownRemainingMs !== null) {
+    drawPixelCountdown(ctx, w, h, countdown, countdownRemainingMs)
   }
 
-  drawer.corners.forEach((c, i) => {
-    ctx.fillStyle = '#fff'
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, 10, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#50dc78'
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, 7, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.font = '700 22px sans-serif'
-    ctx.lineWidth = 4
-    ctx.strokeStyle = '#000'
-    ctx.fillStyle = '#fff'
-    ctx.strokeText(String(i + 1), c.x + 12, c.y - 8)
-    ctx.fillText(String(i + 1), c.x + 12, c.y - 8)
-  })
+  if (showHoldBar && isLetterS && holdProgress > 0 && holdProgress < 1) {
+    const barW = Math.min(220, w * 0.5)
+    const barX = (w - barW) / 2
+    const barY = h * 0.82
+    const labelSize = Math.max(10, Math.round(w * 0.018))
 
-  if (drawer.corners.length >= 2) {
-    const pts = drawer.readyQuad ?? drawer.corners
-    ctx.strokeStyle = countdown ? '#28b4ff' : '#50dc78'
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.moveTo(pts[0].x, pts[0].y)
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
-    if (drawer.readyQuad) ctx.closePath()
-    ctx.stroke()
-    if (tip && !drawer.readyQuad) {
-      const last = drawer.corners[drawer.corners.length - 1]
-      ctx.strokeStyle = 'rgba(160,160,160,0.8)'
-      ctx.beginPath()
-      ctx.moveTo(last.x, last.y)
-      ctx.lineTo(tip.x, tip.y)
-      ctx.stroke()
-    }
-    if (drawer.readyQuad) {
-      ctx.fillStyle = countdown ? 'rgba(40,180,255,0.12)' : 'rgba(80,220,120,0.12)'
-      ctx.beginPath()
-      ctx.moveTo(drawer.readyQuad[0].x, drawer.readyQuad[0].y)
-      for (let i = 1; i < 4; i++) ctx.lineTo(drawer.readyQuad[i].x, drawer.readyQuad[i].y)
-      ctx.closePath()
-      ctx.fill()
-    }
-  }
-
-  if (tip) {
-    ctx.fillStyle = '#00c8ff'
-    ctx.beginPath()
-    ctx.arc(tip.x, tip.y, 8, 0, Math.PI * 2)
-    ctx.fill()
-    const progress = drawer.dwellProgress(performance.now() / 1000)
-    if (progress > 0 && !drawer.readyQuad) {
-      ctx.strokeStyle = '#00ffb4'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.arc(tip.x, tip.y, 18 + 10 * progress, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress)
-      ctx.stroke()
-    }
-  }
-
-  ctx.fillStyle = 'rgba(12,12,14,0.55)'
-  ctx.fillRect(0, 0, w, 88)
-  ctx.fillRect(0, h - 52, w, 52)
-
-  ctx.fillStyle = '#fff'
-  ctx.font = '700 28px "Bebas Neue", sans-serif'
-  ctx.fillText('INDEX FRAME CAPTURE', 16, 36)
-  ctx.fillStyle = '#c8c8c8'
-  ctx.font = '13px "IBM Plex Sans", sans-serif'
-  ctx.fillText('Hold index tip to pin 4 corners  ·  M frame  ·  R reset  ·  Space snap', 16, 64)
-
-  ctx.fillStyle = '#c8dcff'
-  ctx.font = '14px "IBM Plex Sans", sans-serif'
-  const ft = `Frame: ${frameName}`
-  const tw = ctx.measureText(ft).width
-  ctx.fillText(ft, w - tw - 16, 36)
-  ctx.fillText(shotLabel, w - ctx.measureText(shotLabel).width - 16, 58)
-
-  ctx.fillStyle = '#f0f0f0'
-  ctx.font = '16px "IBM Plex Sans", sans-serif'
-  ctx.fillText(status, 16, h - 18)
-
-  if (countdown && countdown > 0) {
-    ctx.font = '800 160px "Bebas Neue", sans-serif'
-    const t = String(countdown)
-    const m = ctx.measureText(t)
-    ctx.strokeStyle = '#000'
-    ctx.lineWidth = 12
-    ctx.strokeText(t, (w - m.width) / 2, h / 2 + 50)
-    ctx.fillStyle = '#fff'
-    ctx.fillText(t, (w - m.width) / 2, h / 2 + 50)
+    ctx.font = `${labelSize}px "Press Start 2P", monospace`
+    ctx.fillStyle = INK
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+    ctx.fillText('HOLD S', w / 2, barY - 8)
+    drawPixelBar(ctx, barX, barY, barW, 12, holdProgress)
+    ctx.textAlign = 'start'
+    ctx.textBaseline = 'alphabetic'
   }
 
   if (flash > 0) {

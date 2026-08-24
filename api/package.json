@@ -4,7 +4,11 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "dev": "node --watch server.mjs"
+    "dev": "node --watch server.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.19"
   },
   "dependencies": {
     "fastify": "^5.6.1"
