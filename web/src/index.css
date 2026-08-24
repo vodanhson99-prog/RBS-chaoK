@@ -480,16 +480,47 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: #111;
 }
 .sticker-stage { position: relative; }
-.placed-sticker {
+.placed-sticker-wrap {
   position: absolute;
   z-index: 2;
-  transform: translate(-50%, -50%);
-  cursor: grab;
-  user-select: none;
+  transform-origin: center;
   touch-action: none;
+}
+.placed-sticker {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
   filter: drop-shadow(2px 2px 0 rgba(17,17,17,0.75));
 }
-.placed-sticker:active { cursor: grabbing; }
+.sticker-drag-target {
+  position: absolute;
+  inset: 18% 0 0;
+  cursor: grab;
+  touch-action: none;
+}
+.sticker-drag-target:active { cursor: grabbing; }
+.sticker-rotate-handle {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid #111;
+  border-radius: 50%;
+  background: #ffe14d;
+  box-shadow: 2px 2px 0 #111;
+  transform: translateX(-50%);
+  cursor: grab;
+  touch-action: none;
+}
+.sticker-rotate-handle:active { cursor: grabbing; }
+.sticker-rotate-handle:focus-visible {
+  outline: 3px solid #2d7dff;
+  outline-offset: 2px;
+}
 .camera-body { display: grid; gap: 7px; }
 .camera-picker { display: grid; gap: 5px; }
 .camera-picker span {

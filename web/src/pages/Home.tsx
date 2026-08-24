@@ -16,8 +16,8 @@ const PLACEHOLDER_SLOTS = [0, 1, 2, 3]
 const HOWTO = [
   'Đứng trước camera, giơ hai bàn tay.',
   'Tay trên cong sang trái, tay dưới cong sang phải — tạo chữ S lật ngược.',
-  'Giữ pose khoảng nửa giây để khóa, đếm 7 giây rồi máy tự chụp. Có thể hạ tay để tạo dáng.',
-  'Strip 6 ảnh: lặp 6 lần. Quét QR để tải JPEG; link hết hạn sau 48 giờ.',
+  'Giữ pose khoảng nửa giây để khóa, đếm 5 giây rồi máy tự chụp. Có thể hạ tay để tạo dáng.',
+  'Strip nhiều ảnh: giơ chữ S lật ngược một lần, rồi tạo dáng; mỗi ảnh cách nhau 3 giây.',
 ]
 
 export default function Home() {

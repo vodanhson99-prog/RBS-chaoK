@@ -82,7 +82,7 @@ export function composeStrip(
   slots.forEach((slot, i) => {
     const shot = shots[i]
     if (!shot) return
-    coverDraw(ctx, shot, slot.x, slot.y, slot.w, slot.h, shot.width, shot.height)
+    coverDraw(ctx, shot, slot.x, slot.y, slot.w, slot.h, shot.width, shot.height, slot.radius)
   })
   ctx.drawImage(overlay, 0, 0)
   return out

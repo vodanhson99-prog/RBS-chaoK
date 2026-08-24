@@ -12,6 +12,14 @@ export type CameraDevice = {
   label: string
 }
 
+const PREFERRED_CAMERA_LABEL = 'nikon webcam utility'
+
+export function chooseDefaultCamera(cameras: CameraDevice[], activeDeviceId?: string): CameraDevice | undefined {
+  return cameras.find((camera) => camera.label.toLowerCase().includes(PREFERRED_CAMERA_LABEL))
+    ?? cameras.find((camera) => camera.deviceId === activeDeviceId)
+    ?? cameras[0]
+}
+
 export async function listCameras(): Promise<CameraDevice[]> {
   const devices = await navigator.mediaDevices.enumerateDevices()
   return devices

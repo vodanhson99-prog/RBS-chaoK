@@ -1,7 +1,8 @@
 import { dist } from './geom'
 import type { TrackedHand } from './hands'
 
-export const COUNTDOWN_SECONDS = 7
+export const COUNTDOWN_SECONDS = 5
+export const CAPTURE_INTERVAL_SECONDS = 3
 export const POSE_DWELL_SECONDS = 0.65
 
 export type SEval = {

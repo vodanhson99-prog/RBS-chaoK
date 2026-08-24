@@ -93,46 +93,56 @@ function markSlotBackground(
   if (right <= left || bottom <= top) return
 
   const localW = right - left
-  const visited = new Uint8Array(localW * (bottom - top))
-  const queue: number[] = []
+  const localH = bottom - top
+  const candidates = new Uint8Array(localW * localH)
+  const visited = new Uint8Array(localW * localH)
   const key = estimateSlotColor(data, w, left, top, right, bottom)
   const toleranceSquared = SLOT_COLOR_TOLERANCE * SLOT_COLOR_TOLERANCE
 
-  const enqueue = (x: number, y: number) => {
-    if (x < left || y < top || x >= right || y >= bottom) return
-    const local = (y - top) * localW + (x - left)
-    if (visited[local] || !insideRoundedSlot(slot, x, y, left, top, right, bottom)) return
-    visited[local] = 1
-    const i = (y * w + x) * 4
-    const dr = data[i] - key[0]
-    const dg = data[i + 1] - key[1]
-    const db = data[i + 2] - key[2]
-    if (dr * dr + dg * dg + db * db <= toleranceSquared) queue.push(local)
-  }
-
-  const seedLeft = left + Math.floor(localW * 0.25)
-  const seedTop = top + Math.floor((bottom - top) * 0.25)
-  const seedRight = Math.max(seedLeft + 1, right - Math.floor(localW * 0.25))
-  const seedBottom = Math.max(seedTop + 1, bottom - Math.floor((bottom - top) * 0.25))
-  for (let y = seedTop; y < seedBottom; y++) {
-    for (let x = seedLeft; x < seedRight; x++) enqueue(x, y)
-  }
-
-  if (!queue.length) {
-    for (let y = top; y < bottom && !queue.length; y++) {
-      for (let x = left; x < right && !queue.length; x++) enqueue(x, y)
+  for (let y = top; y < bottom; y++) {
+    for (let x = left; x < right; x++) {
+      if (!insideRoundedSlot(slot, x, y, left, top, right, bottom)) continue
+      const i = (y * w + x) * 4
+      const dr = data[i] - key[0]
+      const dg = data[i + 1] - key[1]
+      const db = data[i + 2] - key[2]
+      if (dr * dr + dg * dg + db * db <= toleranceSquared) {
+        candidates[(y - top) * localW + (x - left)] = 1
+      }
     }
   }
 
-  while (queue.length) {
-    const local = queue.pop()!
+  let largest: number[] = []
+  for (let y = 0; y < localH; y++) {
+    for (let x = 0; x < localW; x++) {
+      const start = y * localW + x
+      if (!candidates[start] || visited[start]) continue
+      visited[start] = 1
+      const component: number[] = [start]
+      const queue = [start]
+      while (queue.length) {
+        const local = queue.pop()!
+        const cx = local % localW
+        const cy = Math.floor(local / localW)
+        const neighbors = [local - 1, local + 1, local - localW, local + localW]
+        for (const next of neighbors) {
+          const nx = next % localW
+          const ny = Math.floor(next / localW)
+          if (nx < 0 || nx >= localW || ny < 0 || ny >= localH || !candidates[next] || visited[next]) continue
+          if (Math.abs(nx - cx) + Math.abs(ny - cy) !== 1) continue
+          visited[next] = 1
+          component.push(next)
+          queue.push(next)
+        }
+      }
+      if (component.length > largest.length) largest = component
+    }
+  }
+
+  for (const local of largest) {
     const x = left + (local % localW)
     const y = top + Math.floor(local / localW)
     mask[y * w + x] = 1
-    enqueue(x + 1, y)
-    enqueue(x - 1, y)
-    enqueue(x, y + 1)
-    enqueue(x, y - 1)
   }
 }
 

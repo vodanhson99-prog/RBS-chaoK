@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { uploadSession } from '../lib/api'
-import { listCameras, runCaptureLoop, startCamera, type CameraDevice } from '../lib/capture'
+import { chooseDefaultCamera, listCameras, runCaptureLoop, startCamera, type CameraDevice } from '../lib/capture'
 import { applyOverlay } from '../lib/overlay'
 import { canvasToJpegBlob, composeStrip, loadTemplateAssets } from '../lib/compose'
 import { drawBoothOverlay } from '../lib/drawOverlay'
 import { cropTo169 } from '../lib/geom'
-import { COUNTDOWN_SECONDS, evaluateInvertedS, STrigger } from '../lib/sPose'
+import { CAPTURE_INTERVAL_SECONDS, COUNTDOWN_SECONDS, evaluateInvertedS, STrigger } from '../lib/sPose'
 import { nextTemplate, templateById } from '../lib/templates'
 
 type Sticker = {
@@ -15,6 +15,7 @@ type Sticker = {
   x: number
   y: number
   width: number
+  rotation: number
 }
 
 function drawStickerLayer(
@@ -29,7 +30,11 @@ function drawStickerLayer(
     if (!image?.complete || !image.naturalWidth) continue
     const width = canvas.width * item.width
     const height = width * (image.naturalHeight / image.naturalWidth)
-    ctx.drawImage(image, canvas.width * item.x - width / 2, canvas.height * item.y - height / 2, width, height)
+    ctx.save()
+    ctx.translate(canvas.width * item.x, canvas.height * item.y)
+    ctx.rotate((item.rotation * Math.PI) / 180)
+    ctx.drawImage(image, -width / 2, -height / 2, width, height)
+    ctx.restore()
   }
 }
 
@@ -56,10 +61,10 @@ export default function Booth() {
   const lastCapture = useRef(0)
   const flashUntil = useRef(0)
   const capturing = useRef(false)
+  const sequenceNextAt = useRef<number | null>(null)
   const busyRef = useRef(false)
   const stickersRef = useRef<Sticker[]>([])
   const stickerImagesRef = useRef<Record<string, HTMLImageElement>>({})
-  const draggingSticker = useRef<number | null>(null)
 
   const [stickers, setStickers] = useState<Sticker[]>([])
   const [cameras, setCameras] = useState<CameraDevice[]>([])
@@ -83,6 +88,7 @@ export default function Booth() {
     setError(null)
     triggerRef.current.reset()
     countdownEnd.current = null
+    sequenceNextAt.current = null
     capturing.current = false
     busyRef.current = false
     setBusy(false)
@@ -132,9 +138,15 @@ export default function Booth() {
       const shot = cropTo169(frame)
       drawStickerLayer(shot, stickersRef.current, stickerImagesRef.current)
       shotsRef.current = [...shotsRef.current, shot]
-      setShotCount(shotsRef.current.length)
+      const saved = shotsRef.current.length
+      setShotCount(saved)
       setThumbs((prev) => [...prev, shot.toDataURL('image/jpeg', 0.55)])
-      triggerRef.current.reset()
+      if (template.kind === 'strip' && saved < needed) {
+        sequenceNextAt.current = now + CAPTURE_INTERVAL_SECONDS
+      } else {
+        sequenceNextAt.current = null
+        triggerRef.current.reset()
+      }
       capturing.current = false
       void finishIfReady()
     }
@@ -146,12 +158,10 @@ export default function Booth() {
         setCameras(available)
         if (!selectedCameraId) {
           const activeId = stream?.getVideoTracks()[0]?.getSettings().deviceId
-          const nextId = (activeId && available.some((camera) => camera.deviceId === activeId)
-            ? activeId
-            : available[0]?.deviceId) || ''
+          const nextId = chooseDefaultCamera(available, activeId)?.deviceId || ''
           if (nextId) setSelectedCameraId(nextId)
         } else if (!available.some((camera) => camera.deviceId === selectedCameraId)) {
-          setSelectedCameraId(available[0]?.deviceId || '')
+          setSelectedCameraId(chooseDefaultCamera(available)?.deviceId || '')
         }
       } catch {
         if (!cancelled) setCameras([])
@@ -186,6 +196,17 @@ export default function Booth() {
             msg = 'Uploading…'
             triggerRef.current.reset()
             countdownEnd.current = null
+            sequenceNextAt.current = null
+          } else if (sequenceNextAt.current !== null) {
+            const remaining = sequenceNextAt.current - now
+            if (remaining <= 0) {
+              sequenceNextAt.current = null
+              snap(frame)
+              msg = `Saved ${shotsRef.current.length}/${needed}`
+            } else {
+              countdown = Math.max(1, Math.ceil(remaining))
+              msg = `Pose for shot ${shotsRef.current.length + 1}/${needed}`
+            }
           } else if (inCooldown) {
             triggerRef.current.reset()
             countdownEnd.current = null
@@ -199,6 +220,8 @@ export default function Booth() {
               countdown = Math.max(1, Math.ceil(remaining))
               msg = 'Inverted S locked — counting down'
             }
+          } else if (template.kind === 'strip' && shotsRef.current.length > 0) {
+            msg = `Saved ${shotsRef.current.length}/${needed}`
           } else {
             triggerRef.current.update(pose.match, now)
             if (triggerRef.current.locked) {
@@ -269,7 +292,7 @@ export default function Booth() {
 
   const addSticker = (src: string, x = 0.82, y = 0.2) => {
     const width = src === '/stickers/rbs-bottle.png' ? 0.05 : 0.18
-    const next = [...stickersRef.current, { id: Date.now(), src, x, y, width }]
+    const next = [...stickersRef.current, { id: Date.now(), src, x, y, width, rotation: 0 }]
     stickersRef.current = next
     setStickers(next)
   }
@@ -300,9 +323,29 @@ export default function Booth() {
     setStickers(next)
   }
 
+  const rotateSticker = (id: number, clientX: number, clientY: number) => {
+    const stage = stageRef.current
+    if (!stage) return
+    const sticker = stickersRef.current.find((item) => item.id === id)
+    if (!sticker) return
+    const rect = stage.getBoundingClientRect()
+    const centerX = rect.left + sticker.x * rect.width
+    const centerY = rect.top + sticker.y * rect.height
+    const angle = Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI) + 90
+    const next = stickersRef.current.map((item) => item.id === id ? { ...item, rotation: angle } : item)
+    stickersRef.current = next
+    setStickers(next)
+  }
+
+  const handleStickerPointerMove = (event: ReactPointerEvent<HTMLElement>, stickerId: number, mode: 'move' | 'rotate') => {
+    if (mode === 'rotate') rotateSticker(stickerId, event.clientX, event.clientY)
+    else moveSticker(stickerId, event.clientX, event.clientY)
+  }
+
   const resetPose = () => {
     triggerRef.current.reset()
     countdownEnd.current = null
+    sequenceNextAt.current = null
     setCount(null)
   }
 
@@ -351,16 +394,42 @@ export default function Booth() {
               <video ref={videoRef} playsInline muted className="hidden-video" />
               <canvas ref={overlayRef} className="stage" />
               {stickers.map((sticker) => (
-                <img
+                <div
                   key={sticker.id}
-                  className="placed-sticker"
-                  src={sticker.src}
-                  alt=""
-                  draggable
-                  style={{ left: `${sticker.x * 100}%`, top: `${sticker.y * 100}%`, width: `${sticker.width * 100}%` }}
-                  onDragStart={() => { draggingSticker.current = sticker.id }}
-                  onDragEnd={(e) => { moveSticker(sticker.id, e.clientX, e.clientY); draggingSticker.current = null }}
-                />
+                  className="placed-sticker-wrap"
+                  style={{ left: `${sticker.x * 100}%`, top: `${sticker.y * 100}%`, width: `${sticker.width * 100}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)` }}
+                >
+                  <img className="placed-sticker" src={sticker.src} alt="" draggable={false} />
+                  <button
+                    type="button"
+                    className="sticker-rotate-handle"
+                    aria-label={`Rotate ${sticker.src}`}
+                    onPointerDown={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                    }}
+                    onPointerMove={(event) => {
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) handleStickerPointerMove(event, sticker.id, 'rotate')
+                    }}
+                    onPointerUp={(event) => {
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+                    }}
+                  />
+                  <div
+                    className="sticker-drag-target"
+                    onPointerDown={(event) => {
+                      event.preventDefault()
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                    }}
+                    onPointerMove={(event) => {
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) handleStickerPointerMove(event, sticker.id, 'move')
+                    }}
+                    onPointerUp={(event) => {
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+                    }}
+                  />
+                </div>
               ))}
             </div>
             <div className="pixel-controls">

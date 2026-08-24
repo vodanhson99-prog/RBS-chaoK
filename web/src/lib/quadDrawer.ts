@@ -3,7 +3,7 @@ import { dist, orderQuad, quadIsValid, type Pt } from './geom'
 export const DWELL_SECONDS = 0.55
 export const MOVE_TOLERANCE_PX = 28
 export const MIN_CORNER_GAP_PX = 55
-export const COUNTDOWN_SECONDS = 7
+export const COUNTDOWN_SECONDS = 5
 
 export class QuadDrawer {
   corners: Pt[] = []
