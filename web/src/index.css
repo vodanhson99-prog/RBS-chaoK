@@ -490,6 +490,33 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   filter: drop-shadow(2px 2px 0 rgba(17,17,17,0.75));
 }
 .placed-sticker:active { cursor: grabbing; }
+.camera-body { display: grid; gap: 7px; }
+.camera-picker { display: grid; gap: 5px; }
+.camera-picker span {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  line-height: 1.4;
+}
+.camera-picker select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 8px;
+  border: 2px solid #111;
+  border-radius: 0;
+  background: var(--cream);
+  color: #111;
+  font: 600 12px/1.25 'IBM Plex Sans', sans-serif;
+}
+.camera-picker select:focus-visible {
+  outline: 3px solid #2d7dff;
+  outline-offset: 2px;
+}
+.camera-help {
+  margin: 0;
+  color: #3a3a3a;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
 .sticker-panel .win-body { display: grid; gap: 8px; }
 .sticker-palette {
   display: grid;
@@ -515,6 +542,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-top: 10px;
+}
+.info-panel {
+  margin-top: 14px;
+  box-shadow: 4px 4px 0 #111;
 }
 .px-btn {
   font-family: 'Press Start 2P', monospace;

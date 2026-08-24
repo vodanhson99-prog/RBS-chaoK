@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { uploadSession } from '../lib/api'
-import { runCaptureLoop, startCamera } from '../lib/capture'
+import { listCameras, runCaptureLoop, startCamera, type CameraDevice } from '../lib/capture'
 import { applyOverlay } from '../lib/overlay'
 import { canvasToJpegBlob, composeStrip, loadTemplateAssets } from '../lib/compose'
 import { drawBoothOverlay } from '../lib/drawOverlay'
@@ -62,6 +62,8 @@ export default function Booth() {
   const draggingSticker = useRef<number | null>(null)
 
   const [stickers, setStickers] = useState<Sticker[]>([])
+  const [cameras, setCameras] = useState<CameraDevice[]>([])
+  const [selectedCameraId, setSelectedCameraId] = useState('')
   const [status, setStatus] = useState('Allow camera access')
   const [error, setError] = useState<string | null>(null)
   const [shotCount, setShotCount] = useState(0)
@@ -74,22 +76,26 @@ export default function Booth() {
   const needed = template.kind === 'strip' ? template.photoSlots?.length ?? 6 : 1
 
   useEffect(() => {
+    shotsRef.current = []
+    setShotCount(0)
+    setThumbs([])
+    setCount(null)
+    setError(null)
+    triggerRef.current.reset()
+    countdownEnd.current = null
+    capturing.current = false
+    busyRef.current = false
+    setBusy(false)
+    stickersRef.current = []
+    setStickers([])
+  }, [template.id])
+
+  useEffect(() => {
     let cancelled = false
     const video = videoRef.current!
     const overlay = overlayRef.current!
     let stop: (() => void) | undefined
     let stream: MediaStream | undefined
-
-    shotsRef.current = []
-    setShotCount(0)
-    setThumbs([])
-    setCount(null)
-    triggerRef.current.reset()
-    countdownEnd.current = null
-    capturing.current = false
-    busyRef.current = false
-    stickersRef.current = []
-    setStickers([])
 
     const finishIfReady = async () => {
       if (shotsRef.current.length < needed || busyRef.current) return
@@ -133,14 +139,39 @@ export default function Booth() {
       void finishIfReady()
     }
 
+    const refreshCameras = async () => {
+      try {
+        const available = await listCameras()
+        if (cancelled) return
+        setCameras(available)
+        if (!selectedCameraId) {
+          const activeId = stream?.getVideoTracks()[0]?.getSettings().deviceId
+          const nextId = (activeId && available.some((camera) => camera.deviceId === activeId)
+            ? activeId
+            : available[0]?.deviceId) || ''
+          if (nextId) setSelectedCameraId(nextId)
+        } else if (!available.some((camera) => camera.deviceId === selectedCameraId)) {
+          setSelectedCameraId(available[0]?.deviceId || '')
+        }
+      } catch {
+        if (!cancelled) setCameras([])
+      }
+    }
+
+    const onDeviceChange = () => {
+      void refreshCameras()
+    }
+
     ;(async () => {
       try {
         await loadTemplateAssets(template)
-        stream = await startCamera(video)
+        stream = await startCamera(video, selectedCameraId || undefined)
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop())
           return
         }
+        await refreshCameras()
+        navigator.mediaDevices.addEventListener('devicechange', onDeviceChange)
         stop = await runCaptureLoop(video, overlay, ({ hands, now, frame }) => {
           const ctx = overlay.getContext('2d')
           if (!ctx) return
@@ -222,10 +253,11 @@ export default function Booth() {
     return () => {
       cancelled = true
       window.removeEventListener('keydown', onKey)
+      navigator.mediaDevices.removeEventListener('devicechange', onDeviceChange)
       stop?.()
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [template.id, template, needed, navigate])
+  }, [template.id, template, needed, navigate, selectedCameraId])
 
   useEffect(() => {
     for (const sticker of STICKERS) {
@@ -342,6 +374,33 @@ export default function Booth() {
                 RETAKE
               </button>
             </div>
+            <section className="win info-panel">
+              <header className="win-bar">INFORMATION</header>
+              <div className="win-body info-body">
+                <p>
+                  <strong>FRAME</strong>
+                  <span>{template.name}</span>
+                </p>
+                <p>
+                  <strong>STATUS</strong>
+                  <span>{busy ? 'Uploading…' : status}</span>
+                </p>
+                <p>
+                  <strong>SHOT</strong>
+                  <span>
+                    {shotCount}/{needed}
+                    {count ? ` · ${count}` : ''}
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  className="px-btn ghost"
+                  onClick={() => navigate(`/booth/${nextTemplate(template.id).id}`)}
+                >
+                  NEXT FRAME
+                </button>
+              </div>
+            </section>
           </div>
         </section>
 
@@ -360,6 +419,27 @@ export default function Booth() {
               ) : (
                 <p className="side-note">1 shot · 16:9</p>
               )}
+            </div>
+          </section>
+          <section className="win camera-panel">
+            <header className="win-bar">CAMERA SOURCE</header>
+            <div className="win-body camera-body">
+              <label className="camera-picker">
+                <span>SELECT INPUT</span>
+                <select
+                  value={selectedCameraId}
+                  onChange={(event) => setSelectedCameraId(event.target.value)}
+                  disabled={!cameras.length || busy}
+                >
+                  {!cameras.length && <option value="">Camera list unavailable</option>}
+                  {cameras.map((camera) => (
+                    <option key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="camera-help">USB webcam, HDMI capture card, or camera webcam mode.</p>
             </div>
           </section>
           <section className="win sticker-panel" ref={stickerPanelRef}>
@@ -390,33 +470,6 @@ export default function Booth() {
                   </button>
                 ))}
               </div>
-            </div>
-          </section>
-          <section className="win">
-            <header className="win-bar">INFORMATION</header>
-            <div className="win-body info-body">
-              <p>
-                <strong>FRAME</strong>
-                <span>{template.name}</span>
-              </p>
-              <p>
-                <strong>STATUS</strong>
-                <span>{busy ? 'Uploading…' : status}</span>
-              </p>
-              <p>
-                <strong>SHOT</strong>
-                <span>
-                  {shotCount}/{needed}
-                  {count ? ` · ${count}` : ''}
-                </span>
-              </p>
-              <button
-                type="button"
-                className="px-btn ghost"
-                onClick={() => navigate(`/booth/${nextTemplate(template.id).id}`)}
-              >
-                NEXT FRAME
-              </button>
             </div>
           </section>
         </aside>

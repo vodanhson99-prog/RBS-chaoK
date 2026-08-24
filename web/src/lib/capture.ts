@@ -7,10 +7,33 @@ export type FrameInfo = {
   frame: HTMLCanvasElement
 }
 
-export async function startCamera(video: HTMLVideoElement): Promise<MediaStream> {
+export type CameraDevice = {
+  deviceId: string
+  label: string
+}
+
+export async function listCameras(): Promise<CameraDevice[]> {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  return devices
+    .filter((device) => device.kind === 'videoinput')
+    .map((device, index) => ({
+      deviceId: device.deviceId,
+      label: device.label || `Camera ${index + 1}`,
+    }))
+}
+
+export async function startCamera(
+  video: HTMLVideoElement,
+  deviceId?: string,
+): Promise<MediaStream> {
+  const videoConstraints: MediaTrackConstraints = {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }),
+  }
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
-    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+    video: videoConstraints,
   })
   video.srcObject = stream
   await video.play()
