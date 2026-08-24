@@ -1,4 +1,12 @@
-export type TemplateKind = 'single' | 'strip6'
+export type TemplateKind = 'single' | 'strip'
+
+export type TemplateSlot = {
+  x: number
+  y: number
+  w: number
+  h: number
+  radius?: number
+}
 
 export type Template = {
   id: string
@@ -6,7 +14,43 @@ export type Template = {
   src: string
   kind: TemplateKind
   keepBottom?: number
+  photoSlots?: TemplateSlot[]
+  photoSlotMode?: 'dark' | 'cutout'
+  photoArea?: TemplateSlot
+  photoAreaMode?: 'dark' | 'light'
 }
+
+const RBS_STRIP_SLOTS: TemplateSlot[] = [
+  { x: 0.043, y: 0.096, w: 0.397, h: 0.238 },
+  { x: 0.542, y: 0.096, w: 0.391, h: 0.238 },
+  { x: 0.043, y: 0.359, w: 0.397, h: 0.243 },
+  { x: 0.542, y: 0.359, w: 0.391, h: 0.243 },
+  { x: 0.043, y: 0.628, w: 0.397, h: 0.24 },
+  { x: 0.542, y: 0.628, w: 0.391, h: 0.24 },
+]
+
+const MUSIC_FOUR_SLOTS: TemplateSlot[] = [
+  { x: 17 / 220, y: 15 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
+  { x: 17 / 220, y: 161 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
+  { x: 17 / 220, y: 307 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
+  { x: 17 / 220, y: 453 / 680, w: 187 / 220, h: 130 / 680, radius: 12 / 220 },
+]
+
+const NAVY_FOUR_SLOTS: TemplateSlot[] = [
+  { x: 11 / 248, y: 9 / 742, w: 226 / 248, h: 140 / 742, radius: 10 / 248 },
+  { x: 11 / 248, y: 160 / 742, w: 226 / 248, h: 140 / 742, radius: 10 / 248 },
+  { x: 11 / 248, y: 311 / 742, w: 226 / 248, h: 140 / 742, radius: 10 / 248 },
+  { x: 11 / 248, y: 462 / 742, w: 226 / 248, h: 140 / 742, radius: 10 / 248 },
+]
+
+const MY_TEAM_SIX_SLOTS: TemplateSlot[] = [
+  { x: 42 / 682, y: 77 / 1024, w: 294 / 682, h: 216 / 1024 },
+  { x: 349 / 682, y: 77 / 1024, w: 294 / 682, h: 216 / 1024 },
+  { x: 42 / 682, y: 340 / 1024, w: 294 / 682, h: 216 / 1024 },
+  { x: 349 / 682, y: 340 / 1024, w: 294 / 682, h: 216 / 1024 },
+  { x: 42 / 682, y: 604 / 1024, w: 294 / 682, h: 216 / 1024 },
+  { x: 349 / 682, y: 604 / 1024, w: 294 / 682, h: 216 / 1024 },
+]
 
 export const TEMPLATES: Template[] = [
   {
@@ -22,10 +66,52 @@ export const TEMPLATES: Template[] = [
     kind: 'single',
   },
   {
-    id: 'rbs',
-    name: 'RBS K42 strip ×6',
-    src: '/frames/rbs-strip.png',
-    kind: 'strip6',
+    id: 'robotics-soc-son',
+    name: 'Robotics Soc Son',
+    src: '/frames/robotics-soc-son.png',
+    kind: 'single',
+    photoArea: { x: 0.025, y: 0.045, w: 0.95, h: 0.707 },
+    photoAreaMode: 'dark',
+  },
+  {
+    id: 'rbs-decorated',
+    name: 'RBS K42 — Deco strip',
+    src: '/frames/rbs-strip-decorated.png',
+    kind: 'strip',
+    photoSlots: RBS_STRIP_SLOTS,
+    photoSlotMode: 'cutout',
+  },
+  {
+    id: 'rbs-clean',
+    name: 'RBS K42 — Clean strip',
+    src: '/frames/rbs-strip-clean.png',
+    kind: 'strip',
+    photoSlots: RBS_STRIP_SLOTS,
+    photoSlotMode: 'cutout',
+  },
+  {
+    id: 'music-four-strip',
+    name: 'Join With Me — 4 shot',
+    src: '/frames/music-four-strip.png',
+    kind: 'strip',
+    photoSlots: MUSIC_FOUR_SLOTS,
+    photoSlotMode: 'cutout',
+  },
+  {
+    id: 'navy-four-strip',
+    name: 'Navy Night — 4 shot',
+    src: '/frames/navy-four-strip.png',
+    kind: 'strip',
+    photoSlots: NAVY_FOUR_SLOTS,
+    photoSlotMode: 'cutout',
+  },
+  {
+    id: 'my-team-six-strip',
+    name: 'My Team — 6 shot',
+    src: '/frames/my-team-six-strip.png',
+    kind: 'strip',
+    photoSlots: MY_TEAM_SIX_SLOTS,
+    photoSlotMode: 'cutout',
   },
 ]
 

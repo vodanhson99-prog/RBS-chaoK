@@ -38,6 +38,8 @@ const STICKERS = [
   { src: '/stickers/sticker-2.png', label: 'Hero' },
   { src: '/stickers/sticker-3.png', label: 'RBS' },
   { src: '/stickers/sticker-4.png', label: 'Hero 2' },
+  { src: '/stickers/laptop.png', label: 'RBS Laptop' },
+  { src: '/stickers/rbs-bottle.png', label: 'RBS Bottle' },
 ]
 
 export default function Booth() {
@@ -69,7 +71,7 @@ export default function Booth() {
   const statusRef = useRef(status)
   const countRef = useRef<number | null>(null)
 
-  const needed = template.kind === 'strip6' ? 6 : 1
+  const needed = template.kind === 'strip' ? template.photoSlots?.length ?? 6 : 1
 
   useEffect(() => {
     let cancelled = false
@@ -96,7 +98,7 @@ export default function Booth() {
       try {
         const assets = await loadTemplateAssets(template)
         const composed =
-          template.kind === 'strip6'
+          template.kind === 'strip'
             ? composeStrip(shotsRef.current, assets.overlay, assets.slots)
             : applyOverlay(shotsRef.current[0], assets.overlay)
         const blob = await canvasToJpegBlob(composed)
@@ -234,7 +236,8 @@ export default function Booth() {
   }, [])
 
   const addSticker = (src: string, x = 0.82, y = 0.2) => {
-    const next = [...stickersRef.current, { id: Date.now(), src, x, y, width: 0.18 }]
+    const width = src === '/stickers/rbs-bottle.png' ? 0.05 : 0.18
+    const next = [...stickersRef.current, { id: Date.now(), src, x, y, width }]
     stickersRef.current = next
     setStickers(next)
   }
@@ -346,9 +349,9 @@ export default function Booth() {
           <section className="win">
             <header className="win-bar">SHOT PREVIEW</header>
             <div className="win-body">
-              {template.kind === 'strip6' ? (
+              {template.kind === 'strip' ? (
                 <ol className="thumbs pixel-thumbs">
-                  {Array.from({ length: 6 }, (_, i) => (
+                  {Array.from({ length: needed }, (_, i) => (
                     <li key={i} className={thumbs[i] ? 'filled' : ''}>
                       {thumbs[i] ? <img src={thumbs[i]} alt="" /> : i + 1}
                     </li>
@@ -379,7 +382,11 @@ export default function Booth() {
                     }}
                     title={`Add ${sticker.label}`}
                   >
-                    <img src={sticker.src} alt={sticker.label} />
+                    <img
+                      className={sticker.label === 'RBS Bottle' ? 'sticker-thumb bottle-thumb' : 'sticker-thumb'}
+                      src={sticker.src}
+                      alt={sticker.label}
+                    />
                   </button>
                 ))}
               </div>

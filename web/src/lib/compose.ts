@@ -10,6 +10,27 @@ import {
 } from './overlay'
 import type { Template } from './templates'
 
+function resolvePhotoArea(template: Template, art: HTMLCanvasElement): Rect | undefined {
+  if (!template.photoArea) return undefined
+  return {
+    x: Math.round(template.photoArea.x * art.width),
+    y: Math.round(template.photoArea.y * art.height),
+    w: Math.round(template.photoArea.w * art.width),
+    h: Math.round(template.photoArea.h * art.height),
+  }
+}
+
+function resolveTemplateSlots(template: Template, art: HTMLCanvasElement): Rect[] {
+  if (!template.photoSlots) return detectGreySlots(art, 6)
+  return template.photoSlots.map((slot) => ({
+    x: Math.round(slot.x * art.width),
+    y: Math.round(slot.y * art.height),
+    w: Math.round(slot.w * art.width),
+    h: Math.round(slot.h * art.height),
+    radius: slot.radius ? slot.radius * art.width : undefined,
+  }))
+}
+
 const cache = new Map<
   string,
   { art: HTMLCanvasElement; overlay: HTMLCanvasElement; slots: Rect[] }
@@ -24,11 +45,16 @@ export async function loadTemplateAssets(template: Template) {
   let overlay: HTMLCanvasElement
   let slots: Rect[] = []
 
-  if (template.kind === 'strip6') {
-    slots = detectGreySlots(art, 6)
-    overlay = overlayFromGreySlots(art, slots)
+  if (template.kind === 'strip') {
+    slots = resolveTemplateSlots(template, art)
+    overlay = overlayFromGreySlots(art, slots, template.photoSlotMode)
   } else {
-    overlay = buildOverlayCanvas(art, template.keepBottom ?? 0)
+    overlay = buildOverlayCanvas(
+      art,
+      template.keepBottom ?? 0,
+      resolvePhotoArea(template, art),
+      template.photoAreaMode,
+    )
   }
 
   const packed = { art, overlay, slots }

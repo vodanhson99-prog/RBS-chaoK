@@ -1,4 +1,4 @@
-export type Rect = { x: number; y: number; w: number; h: number }
+export type Rect = { x: number; y: number; w: number; h: number; radius?: number }
 
 const BLACK_KEY = 16
 
@@ -12,6 +12,128 @@ function isSlotPixel(r: number, g: number, b: number): boolean {
   if (spread >= 32) return false
   const lum = luminance(r, g, b)
   return lum <= 42 || (lum >= 145 && lum <= 235)
+}
+
+const SLOT_COLOR_TOLERANCE = 30
+
+function medianFromHistogram(histogram: Uint32Array, total: number): number {
+  const target = Math.ceil(total / 2)
+  let seen = 0
+  for (let value = 0; value < histogram.length; value++) {
+    seen += histogram[value]
+    if (seen >= target) return value
+  }
+  return 0
+}
+
+function estimateSlotColor(
+  data: Uint8ClampedArray,
+  w: number,
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+): [number, number, number] {
+  const histograms = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)]
+  const insetX = Math.floor((right - left) * 0.2)
+  const insetY = Math.floor((bottom - top) * 0.2)
+  const sampleLeft = left + insetX
+  const sampleTop = top + insetY
+  const sampleRight = Math.max(sampleLeft + 1, right - insetX)
+  const sampleBottom = Math.max(sampleTop + 1, bottom - insetY)
+  let total = 0
+
+  for (let y = sampleTop; y < sampleBottom; y += 2) {
+    for (let x = sampleLeft; x < sampleRight; x += 2) {
+      const i = (y * w + x) * 4
+      histograms[0][data[i]] += 1
+      histograms[1][data[i + 1]] += 1
+      histograms[2][data[i + 2]] += 1
+      total += 1
+    }
+  }
+
+  return [
+    medianFromHistogram(histograms[0], total),
+    medianFromHistogram(histograms[1], total),
+    medianFromHistogram(histograms[2], total),
+  ]
+}
+
+function insideRoundedSlot(
+  slot: Rect,
+  x: number,
+  y: number,
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+): boolean {
+  if (!slot.radius) return true
+  const radius = Math.min(slot.radius, (right - left) / 2, (bottom - top) / 2)
+  const dx = Math.min(x - left, right - 1 - x)
+  const dy = Math.min(y - top, bottom - 1 - y)
+  if (dx >= radius || dy >= radius) return true
+  const cornerX = radius - dx
+  const cornerY = radius - dy
+  return cornerX * cornerX + cornerY * cornerY <= radius * radius
+}
+
+function markSlotBackground(
+  data: Uint8ClampedArray,
+  w: number,
+  h: number,
+  slot: Rect,
+  mask: Uint8Array,
+): void {
+  const left = Math.max(0, Math.floor(slot.x))
+  const top = Math.max(0, Math.floor(slot.y))
+  const right = Math.min(w, Math.ceil(slot.x + slot.w))
+  const bottom = Math.min(h, Math.ceil(slot.y + slot.h))
+  if (right <= left || bottom <= top) return
+
+  const localW = right - left
+  const visited = new Uint8Array(localW * (bottom - top))
+  const queue: number[] = []
+  const key = estimateSlotColor(data, w, left, top, right, bottom)
+  const toleranceSquared = SLOT_COLOR_TOLERANCE * SLOT_COLOR_TOLERANCE
+
+  const enqueue = (x: number, y: number) => {
+    if (x < left || y < top || x >= right || y >= bottom) return
+    const local = (y - top) * localW + (x - left)
+    if (visited[local] || !insideRoundedSlot(slot, x, y, left, top, right, bottom)) return
+    visited[local] = 1
+    const i = (y * w + x) * 4
+    const dr = data[i] - key[0]
+    const dg = data[i + 1] - key[1]
+    const db = data[i + 2] - key[2]
+    if (dr * dr + dg * dg + db * db <= toleranceSquared) queue.push(local)
+  }
+
+  const seedLeft = left + Math.floor(localW * 0.25)
+  const seedTop = top + Math.floor((bottom - top) * 0.25)
+  const seedRight = Math.max(seedLeft + 1, right - Math.floor(localW * 0.25))
+  const seedBottom = Math.max(seedTop + 1, bottom - Math.floor((bottom - top) * 0.25))
+  for (let y = seedTop; y < seedBottom; y++) {
+    for (let x = seedLeft; x < seedRight; x++) enqueue(x, y)
+  }
+
+  if (!queue.length) {
+    for (let y = top; y < bottom && !queue.length; y++) {
+      for (let x = left; x < right && !queue.length; x++) enqueue(x, y)
+    }
+  }
+
+  while (queue.length) {
+    const local = queue.pop()!
+    const x = left + (local % localW)
+    const y = top + Math.floor(local / localW)
+    mask[y * w + x] = 1
+    enqueue(x + 1, y)
+    enqueue(x - 1, y)
+    enqueue(x, y + 1)
+    enqueue(x, y - 1)
+  }
 }
 
 function connectedComponents(
@@ -98,6 +220,8 @@ export function rasterizeImage(img: HTMLImageElement): HTMLCanvasElement {
 export function buildOverlayCanvas(
   art: HTMLCanvasElement,
   keepBottom = 0,
+  photoArea?: Rect,
+  photoAreaMode: 'dark' | 'light' = 'dark',
 ): HTMLCanvasElement {
   const { width: w, height: h } = art
   const ctx = art.getContext('2d', { willReadFrequently: true })!
@@ -121,9 +245,24 @@ export function buildOverlayCanvas(
 
   if (!hasAlpha) {
     const mask = new Uint8Array(w * h)
-    for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-      const mx = Math.max(data[i], data[i + 1], data[i + 2])
-      mask[p] = mx <= BLACK_KEY ? 1 : 0
+    if (photoArea) {
+      const left = Math.max(0, photoArea.x)
+      const top = Math.max(0, photoArea.y)
+      const right = Math.min(w, photoArea.x + photoArea.w)
+      const bottom = Math.min(h, photoArea.y + photoArea.h)
+      for (let y = top; y < bottom; y++) {
+        for (let x = left; x < right; x++) {
+          const p = y * w + x
+          const i = p * 4
+          const lum = luminance(data[i], data[i + 1], data[i + 2])
+          mask[p] = photoAreaMode === 'light' ? (lum >= 210 ? 1 : 0) : (Math.max(data[i], data[i + 1], data[i + 2]) <= BLACK_KEY ? 1 : 0)
+        }
+      }
+    } else {
+      for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+        const mx = Math.max(data[i], data[i + 1], data[i + 2])
+        mask[p] = mx <= BLACK_KEY ? 1 : 0
+      }
     }
     const { labels, count, areas } = connectedComponents(mask, w, h)
     let best = 0
@@ -135,7 +274,7 @@ export function buildOverlayCanvas(
       }
     }
     for (let p = 0; p < labels.length; p++) {
-      dest.data[p * 4 + 3] = labels[p] === best ? 0 : 255
+      dest.data[p * 4 + 3] = labels[p] === best && best !== 0 ? 0 : 255
     }
     if (keepBottom > 0) {
       const bandTop = Math.round(h * (1 - keepBottom))
@@ -205,7 +344,7 @@ function fallbackGrid(w: number, h: number, want: number): Rect[] {
   return out
 }
 
-export function overlayFromGreySlots(art: HTMLCanvasElement, slots: Rect[]): HTMLCanvasElement {
+export function overlayFromGreySlots(art: HTMLCanvasElement, slots: Rect[], mode: 'dark' | 'cutout' = 'dark'): HTMLCanvasElement {
   const { width: w, height: h } = art
   const ctx = art.getContext('2d', { willReadFrequently: true })!
   const src = ctx.getImageData(0, 0, w, h)
@@ -218,17 +357,16 @@ export function overlayFromGreySlots(art: HTMLCanvasElement, slots: Rect[]): HTM
 
   const mask = new Uint8Array(w * h)
   const { data } = src
-  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-    mask[p] = isSlotPixel(data[i], data[i + 1], data[i + 2]) ? 1 : 0
+  if (mode === 'cutout') {
+    for (const slot of slots) markSlotBackground(data, w, h, slot, mask)
+  } else {
+    for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+      mask[p] = isSlotPixel(data[i], data[i + 1], data[i + 2]) ? 1 : 0
+    }
   }
 
-  for (const slot of slots) {
-    for (let y = slot.y; y < slot.y + slot.h; y++) {
-      for (let x = slot.x; x < slot.x + slot.w; x++) {
-        const p = y * w + x
-        if (mask[p]) dest.data[p * 4 + 3] = 0
-      }
-    }
+  for (let p = 0; p < mask.length; p++) {
+    if (mask[p]) dest.data[p * 4 + 3] = 0
   }
   octx.putImageData(dest, 0, 0)
   return out

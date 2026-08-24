@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PixelTitle from '../components/PixelTitle'
 import TiltCard from '../components/TiltCard'
 import TypeLines from '../components/TypeLines'
 import { loadTemplateAssets } from '../lib/compose'
-import { TEMPLATES } from '../lib/templates'
+import { TEMPLATES, type TemplateKind } from '../lib/templates'
+
+const FRAME_TABS: Array<{ kind: TemplateKind; label: string; sublabel: string }> = [
+  { kind: 'single', label: '16:9 FRAMES', sublabel: 'ONE SHOT · WIDE FORMAT' },
+  { kind: 'strip', label: 'PHOTO STRIPS', sublabel: 'FOUR OR SIX SHOTS · VERTICAL FORMAT' },
+]
+
+const PLACEHOLDER_SLOTS = [0, 1, 2, 3]
 
 const HOWTO = [
   'Đứng trước camera, giơ hai bàn tay.',
@@ -15,6 +22,8 @@ const HOWTO = [
 
 export default function Home() {
   const [previews, setPreviews] = useState<Record<string, string>>({})
+  const [activeKind, setActiveKind] = useState<TemplateKind>('single')
+  const frameGridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
@@ -31,8 +40,15 @@ export default function Home() {
     }
   }, [])
 
-  const strip = TEMPLATES.find((t) => t.kind === 'strip6') ?? TEMPLATES[0]
-  const singles = TEMPLATES.filter((t) => t.kind === 'single')
+  const activeTab = FRAME_TABS.find((tab) => tab.kind === activeKind) ?? FRAME_TABS[0]
+  const activeTemplates = TEMPLATES.filter((template) => template.kind === activeKind)
+
+  const scrollFrames = (direction: 'next' | 'previous') => {
+    frameGridRef.current?.scrollBy({
+      left: direction === 'next' ? frameGridRef.current.clientWidth * 0.82 : -frameGridRef.current.clientWidth * 0.82,
+      behavior: 'smooth',
+    })
+  }
 
   return (
     <main className="booth-pixel home-pixel">
@@ -63,34 +79,77 @@ export default function Home() {
               <i />
             </span>
           </header>
-          <div className="win-body home-stage">
-            <TiltCard className="frame-hero">
-              <Link className="card frame-card strip-card" to={`/booth/${strip.id}`}>
-                <div className={`thumb ${strip.kind}`}>
-                  {previews[strip.id] ? (
-                    <img src={previews[strip.id]} alt={strip.name} />
-                  ) : (
-                    <span>Loading…</span>
-                  )}
+          <div className="win-body frame-library">
+            <div className="frame-tabs" role="tablist" aria-label="Frame categories">
+              {FRAME_TABS.map((tab) => {
+                const count = TEMPLATES.filter((template) => template.kind === tab.kind).length
+                const isActive = tab.kind === activeKind
+                return (
+                  <button
+                    key={tab.kind}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`frame-panel-${tab.kind}`}
+                    className={`frame-tab${isActive ? ' is-active' : ''}`}
+                    onClick={() => setActiveKind(tab.kind)}
+                  >
+                    <span className="frame-tab-label">{tab.label}</span>
+                    <span className="frame-tab-detail">{tab.sublabel}</span>
+                    <span className="frame-tab-count">{String(count).padStart(2, '0')}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div
+              id={`frame-panel-${activeKind}`}
+              className={`frame-panel ${activeKind === 'strip' ? 'is-strip' : 'is-wide'}`}
+              role="tabpanel"
+              aria-label={activeTab.label}
+            >
+              <div className="frame-panel-heading">
+                <div>
+                  <p className="frame-panel-kicker">LOADOUT / {activeKind === 'strip' ? 'STRIP MODE' : 'SINGLE MODE'}</p>
+                  <h2>{activeTab.label}</h2>
                 </div>
-                <div className="meta">
-                  <strong>{strip.name}</strong>
-                  <span>6 shots</span>
-                </div>
-              </Link>
-            </TiltCard>
-            <div className="frame-stack">
-              {singles.map((t) => (
-                <Link key={t.id} className="card frame-card wide-card" to={`/booth/${t.id}`}>
-                  <div className={`thumb ${t.kind}`}>
-                    {previews[t.id] ? <img src={previews[t.id]} alt={t.name} /> : <span>Loading…</span>}
+                <button
+                  type="button"
+                  className="frame-panel-next"
+                  aria-label={`Show more ${activeTab.label.toLowerCase()}`}
+                  onClick={() => scrollFrames('next')}
+                >
+                  <svg className="pixel-arrow" viewBox="0 0 24 16" aria-hidden="true">
+                    <path d="M1 6h12V1l10 7-10 7v-5H1z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="frame-grid" ref={frameGridRef}>
+                {activeTemplates.map((template) => (
+                  <TiltCard key={template.id} className="frame-tile">
+                    <Link className="card frame-card" to={`/booth/${template.id}`}>
+                      <div className={`thumb ${template.kind}`}>
+                        {previews[template.id] ? (
+                          <img src={previews[template.id]} alt={template.name} />
+                        ) : (
+                          <span>Loading…</span>
+                        )}
+                      </div>
+                      <div className="meta">
+                        <strong>{template.name}</strong>
+                        <span>{template.kind === 'strip' ? `${template.photoSlots?.length ?? 6} shots · vertical` : '1 shot · 16:9'}</span>
+                      </div>
+                    </Link>
+                  </TiltCard>
+                ))}
+                {PLACEHOLDER_SLOTS.map((slot) => (
+                  <div className="frame-slot" key={`placeholder-${slot}`} aria-hidden="true">
+                    <span className="frame-slot-plus">+</span>
+                    <span>MORE FRAMES<br />SOON</span>
                   </div>
-                  <div className="meta">
-                    <strong>{t.name}</strong>
-                    <span>1 shot · 16:9</span>
-                  </div>
-                </Link>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>
