@@ -163,6 +163,8 @@ export function warpQuad(
   return out
 }
 
+export type RotatedRect = { x: number; y: number; w: number; h: number; rotation?: number }
+
 export function coverDraw(
   ctx: CanvasRenderingContext2D,
   img: CanvasImageSource,
@@ -173,17 +175,30 @@ export function coverDraw(
   srcW: number,
   srcH: number,
 ): void {
-  const scale = Math.max(dw / srcW, dh / srcH)
+  coverDrawRotated(ctx, img, { x: dx, y: dy, w: dw, h: dh }, srcW, srcH)
+}
+
+export function coverDrawRotated(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  slot: RotatedRect,
+  srcW: number,
+  srcH: number,
+): void {
+  const scale = Math.max(slot.w / srcW, slot.h / srcH)
   const w = srcW * scale
   const h = srcH * scale
-  const x = dx + (dw - w) / 2
-  const y = dy + (dh - h) / 2
+  const cx = slot.x + slot.w / 2
+  const cy = slot.y + slot.h / 2
+  const radians = ((slot.rotation ?? 0) * Math.PI) / 180
   ctx.save()
   ctx.imageSmoothingEnabled = true
   if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high'
+  ctx.translate(cx, cy)
+  ctx.rotate(radians)
   ctx.beginPath()
-  ctx.rect(dx, dy, dw, dh)
+  ctx.rect(-slot.w / 2, -slot.h / 2, slot.w, slot.h)
   ctx.clip()
-  ctx.drawImage(img, x, y, w, h)
+  ctx.drawImage(img, -w / 2, -h / 2, w, h)
   ctx.restore()
 }

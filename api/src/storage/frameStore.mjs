@@ -19,7 +19,15 @@ export class FrameStore {
     return path.join(this.root, id)
   }
 
+  jsonDir(id) {
+    return path.join(this.frameDir(id), 'json')
+  }
+
   metaPath(id) {
+    return path.join(this.jsonDir(id), 'meta.json')
+  }
+
+  legacyMetaPath(id) {
     return path.join(this.frameDir(id), 'meta.json')
   }
 
@@ -64,9 +72,10 @@ export class FrameStore {
 
     await fs.mkdir(dir, { recursive: false })
     try {
+      await fs.mkdir(this.jsonDir(id), { recursive: false })
       await this.writeAtomic(this.assetPath(id, assetKey), bytes)
       await this.writeAtomic(this.assetPath(id, thumbnailKey), thumbnailBytes || bytes)
-      await this.writeAtomic(this.metaPath(id), JSON.stringify(metadata))
+      await this.writeAtomic(this.metaPath(id), JSON.stringify(metadata, null, 2))
       this.activeCache = null
       return metadata
     } catch (error) {
@@ -77,7 +86,16 @@ export class FrameStore {
 
   async read(id) {
     incrementMetric(this.metrics, 'frame.metadataReads')
-    return JSON.parse(await fs.readFile(this.metaPath(id), 'utf8'))
+    try {
+      return JSON.parse(await fs.readFile(this.metaPath(id), 'utf8'))
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+      const legacyMetadata = JSON.parse(await fs.readFile(this.legacyMetaPath(id), 'utf8'))
+      await fs.mkdir(this.jsonDir(id), { recursive: true })
+      await this.writeAtomic(this.metaPath(id), JSON.stringify(legacyMetadata, null, 2))
+      await fs.rm(this.legacyMetaPath(id), { force: true })
+      return legacyMetadata
+    }
   }
 
   async readAssetByMetadata(metadata, thumbnail = false) {
@@ -116,7 +134,8 @@ export class FrameStore {
   async archive(id) {
     const metadata = await this.read(id)
     const updated = { ...metadata, status: 'archived', updatedAt: new Date().toISOString() }
-    await this.writeAtomic(this.metaPath(id), JSON.stringify(updated))
+    await fs.mkdir(this.jsonDir(id), { recursive: true })
+    await this.writeAtomic(this.metaPath(id), JSON.stringify(updated, null, 2))
     this.invalidateCache()
     return updated
   }

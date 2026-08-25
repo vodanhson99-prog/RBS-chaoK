@@ -1,5 +1,5 @@
 const SPARK = '#ff6117'
-const INK = '#eaeaea'
+const INK = '#f7f8f5'
 const CHARCOAL = '#252525'
 
 function drawPixelBar(

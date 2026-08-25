@@ -1,10 +1,10 @@
 import { EXPORT_2K, EXPORT_2K_STRIP } from './imageExport'
 
-export type TemplateKind = 'single' | 'strip6'
+export type TemplateKind = 'single' | 'strip6' | 'custom'
 
 type FrameAssetMime = 'image/png' | 'image/jpeg' | 'image/svg+xml'
 
-export type TemplateSlot = { x: number; y: number; w: number; h: number }
+export type TemplateSlot = { x: number; y: number; w: number; h: number; rotation?: number }
 
 export type Template = {
   id: string
@@ -14,7 +14,7 @@ export type Template = {
   keepBottom?: number
   version: number
   output: { width: number; height: number; mimeType: 'image/jpeg' }
-  layout: { mode: 'single' | 'strip'; crop: 'cover' }
+  layout: { mode: 'single' | 'strip' | 'custom'; crop: 'cover' }
   asset: { src: string; expectedMimeType: FrameAssetMime }
   slots: TemplateSlot[]
   thumbnailSrc: string
@@ -75,6 +75,15 @@ export const TEMPLATES: Template[] = [
     ],
   },
 ]
+
+export function templateShotCount(template: Pick<Template, 'kind' | 'slots'>): number {
+  if (template.slots.length > 0) return template.slots.length
+  return template.kind === 'strip6' ? 6 : 1
+}
+
+export function templateFilterKind(template: Pick<Template, 'kind' | 'slots'>): 'single' | 'strip6' {
+  return templateShotCount(template) > 1 ? 'strip6' : 'single'
+}
 
 export function templateById(id: string | null | undefined, templates: Template[] = TEMPLATES): Template {
   return templates.find((template) => template.id === id) ?? templates[0] ?? TEMPLATES[0]

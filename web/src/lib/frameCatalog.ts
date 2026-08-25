@@ -11,6 +11,7 @@ export function frameById(id: string | undefined, frames: FrameCatalogItem[] = F
 }
 
 let catalogPromise: Promise<FrameCatalogItem[]> | null = null
+const FRAME_CATALOG_UPDATED = 'rbs:frame-catalog-updated'
 
 function mergeFrameCatalog(custom: FrameCatalogItem[]): FrameCatalogItem[] {
   const customIds = new Set(custom.map((frame) => frame.id))
@@ -26,21 +27,33 @@ function loadCatalog(): Promise<FrameCatalogItem[]> {
   return catalogPromise
 }
 
+export function refreshFrameCatalog(): void {
+  catalogPromise = null
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(FRAME_CATALOG_UPDATED))
+}
+
 export function useFrameCatalog(): { frames: FrameCatalogItem[]; loading: boolean } {
   const [frames, setFrames] = useState<FrameCatalogItem[]>(FRAME_CATALOG)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    void loadCatalog()
-      .then((nextFrames) => {
-        if (active) setFrames(nextFrames)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+    const load = () => {
+      setLoading(true)
+      void loadCatalog()
+        .then((nextFrames) => {
+          if (active) setFrames(nextFrames)
+        })
+        .finally(() => {
+          if (active) setLoading(false)
+        })
+    }
+    load()
+    const onCatalogUpdated = () => load()
+    window.addEventListener(FRAME_CATALOG_UPDATED, onCatalogUpdated)
     return () => {
       active = false
+      window.removeEventListener(FRAME_CATALOG_UPDATED, onCatalogUpdated)
     }
   }, [])
 

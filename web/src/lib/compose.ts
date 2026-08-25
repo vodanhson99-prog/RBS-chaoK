@@ -1,4 +1,4 @@
-import { coverDraw } from './geom'
+import { coverDrawRotated } from './geom'
 import { configureCanvasQuality } from './imageExport'
 import {
   applyOverlay,
@@ -29,11 +29,13 @@ function scaleSlots(slots: Rect[], fromW: number, fromH: number, toW: number, to
     y: Math.round(slot.y * sy),
     w: Math.round(slot.w * sx),
     h: Math.round(slot.h * sy),
+    rotation: slot.rotation ?? 0,
   }))
 }
 
 export async function loadTemplateAssets(template: Template) {
-  const cacheKey = `${template.id}@${template.version}@${template.output.width}x${template.output.height}@${template.src}`
+  const slotKey = template.slots.map((slot) => `${slot.x},${slot.y},${slot.w},${slot.h},${slot.rotation ?? 0}`).join(';')
+  const cacheKey = `${template.id}@${template.version}@${template.output.width}x${template.output.height}@${template.src}@${slotKey}`
   const hit = cache.get(cacheKey)
   if (hit) return hit
   const inflight = pending.get(cacheKey)
@@ -89,7 +91,7 @@ export function composeSingle(
   return applyOverlay(source, overlay, outW, outH)
 }
 
-export function composeStrip(
+export function composeSlots(
   shots: HTMLCanvasElement[],
   overlay: HTMLCanvasElement,
   slots: Rect[],
@@ -104,11 +106,10 @@ export function composeStrip(
   configureCanvasQuality(ctx)
   ctx.fillStyle = '#111'
   ctx.fillRect(0, 0, outW, outH)
-
-  slots.forEach((slot, i) => {
-    const shot = shots[i]
+  slots.forEach((slot, index) => {
+    const shot = shots[index]
     if (!shot) return
-    coverDraw(ctx, shot, slot.x, slot.y, slot.w, slot.h, shot.width, shot.height)
+    coverDrawRotated(ctx, shot, slot, shot.width, shot.height)
   })
   ctx.drawImage(overlay, 0, 0, outW, outH)
   return out

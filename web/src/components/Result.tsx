@@ -48,9 +48,9 @@ export default function Result() {
       <div className="pixel-grid-bg" aria-hidden />
 
       <header className="picker-head">
-        <p className="pixel-kicker">SESSION DONE</p>
-        <h1 className="pixel-title">scan to keep it</h1>
-        <p className="picker-sub">Open on your phone · same Wi‑Fi · expires {expires || 'soon'}</p>
+        <p className="pixel-kicker">SESSION READY / QR HANDOFF</p>
+        <h1 className="pixel-title">keep the signal</h1>
+        <p className="picker-sub">Scan on your phone. Stay on the same Wi-Fi. Link expires {expires || 'soon'}.</p>
       </header>
 
       <div className="result-grid">
@@ -63,7 +63,7 @@ export default function Result() {
           unoptimized={!preview}
         />
         <div className="qr-pane">
-          {qr ? <img src={qr} alt="QR code" /> : <p className="lede">Making QR…</p>}
+          {qr ? <img src={qr} alt="QR code" /> : <p className="lede">Making QR code...</p>}
           <p className="url">{shareUrl || '…'}</p>
           <div className="action-row">
             <button
@@ -74,7 +74,7 @@ export default function Result() {
                 try {
                   await navigator.clipboard.writeText(shareUrl)
                 } catch {
-                  setError('Clipboard unavailable — copy the link manually')
+                  setError('Clipboard unavailable. Copy the link manually.')
                 }
               }}
               disabled={!shareUrl || !navigator.clipboard}

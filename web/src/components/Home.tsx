@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useFrameCatalog } from '../lib/frameCatalog'
+import { templateFilterKind } from '../lib/templates'
 
 type Filter = 'all' | 'single' | 'strip6'
 
@@ -14,7 +15,7 @@ export default function Home() {
 
   const frames = useMemo(() => {
     if (filter === 'all') return catalog
-    return catalog.filter((frame) => frame.kind === filter)
+    return catalog.filter((frame) => templateFilterKind(frame) === filter)
   }, [catalog, filter])
 
   return (
@@ -22,9 +23,9 @@ export default function Home() {
       <div className="pixel-grid-bg" aria-hidden />
 
       <header className="picker-head">
-        <p className="pixel-kicker">RBS PHOTOBOOTH</p>
-        <h1 className="pixel-title">pick your frame</h1>
-        <p className="picker-sub">Tap a frame · show ✊ S to shoot · scan QR on your phone</p>
+        <p className="pixel-kicker">RBS PHOTOBOOTH / LIVE CAPTURE</p>
+        <h1 className="pixel-title">pick a signal</h1>
+        <p className="picker-sub">Choose a frame, show the letter S, then keep the result on your phone.</p>
       </header>
 
       <div className="picker-toolbar">
@@ -60,7 +61,7 @@ export default function Home() {
               onMouseEnter={() => setHovered(frame.id)}
               onMouseLeave={() => setHovered(null)}
             >
-              <div className={`frame-card__thumb ${frame.kind}`}>
+              <div className={`frame-card__thumb ${templateFilterKind(frame)}`}>
                 <Image
                   src={frame.thumbnailSrc}
                   alt=""
@@ -70,11 +71,12 @@ export default function Home() {
                   className="pixel-thumb"
                 />
                 <span className="frame-card__idx">{String(index + 1).padStart(2, '0')}</span>
-                {frame.kind === 'strip6' && <span className="frame-card__tag">×6</span>}
+                {frame.slots.length > 1 && <span className="frame-card__tag">×{frame.slots.length}</span>}
               </div>
               <div className="frame-card__meta">
                 <span className="frame-card__name">{frame.name}</span>
-                <span className="frame-card__go">START →</span>
+                {frame.slots.length > 0 && <span className="frame-card__count">{frame.slots.length} PHOTO{frame.slots.length === 1 ? '' : 'S'}</span>}
+                <span className="frame-card__go">OPEN FRAME →</span>
               </div>
             </Link>
           </li>

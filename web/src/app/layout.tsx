@@ -1,17 +1,17 @@
 import type { Metadata } from 'next'
-import { Manrope, Press_Start_2P, VT323 } from 'next/font/google'
+import { IBM_Plex_Mono, Manrope, Space_Grotesk } from 'next/font/google'
 import '../index.css'
 
-const pixel = Press_Start_2P({
+const display = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-pixel',
-  weight: '400',
+  variable: '--font-display',
+  weight: ['400', '500', '600', '700'],
 })
 
-const mono = VT323({
+const mono = IBM_Plex_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
-  weight: '400',
+  weight: ['400', '500', '600'],
 })
 
 const body = Manrope({
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${pixel.variable} ${mono.variable} ${body.variable}`}>
+    <html lang="en" className={`${display.variable} ${mono.variable} ${body.variable}`}>
       <head>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link rel="preconnect" href="https://storage.googleapis.com" />

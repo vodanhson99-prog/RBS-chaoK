@@ -10,14 +10,14 @@ import {
   canvasToJpegBlob,
   canvasToPreviewDataUrl,
   composeSingle,
-  composeStrip,
+  composeSlots,
   JPEG_THUMB_QUALITY,
   loadTemplateAssets,
 } from '../../lib/compose'
 import { configureCanvasQuality } from '../../lib/imageExport'
 import { drawBoothOverlay } from '../../lib/drawOverlay'
 import { GestureCaptureTrigger } from '../../lib/gestureTrigger'
-import type { Template } from '../../lib/templates'
+import { templateShotCount, type Template } from '../../lib/templates'
 
 export type CapturePhase = 'loading' | 'ready' | 'holding' | 'countdown' | 'cooldown' | 'busy' | 'printing'
 
@@ -62,7 +62,7 @@ export function useBoothSession(template: Template, boothConfig: BoothConfig): B
   const [printing, setPrinting] = useState(false)
   const [printPreview, setPrintPreview] = useState<string | null>(null)
 
-  const needed = template.kind === 'strip6' ? 6 : 1
+  const needed = templateShotCount(template)
   const gestureConfigRef = useRef({
     holdMs: boothConfig.gesture.holdMs,
     countdownSeconds: boothConfig.gesture.countdownSeconds,
@@ -148,8 +148,8 @@ export function useBoothSession(template: Template, boothConfig: BoothConfig): B
       try {
         const assets = await loadTemplateAssets(template)
         const composed =
-          template.kind === 'strip6'
-            ? composeStrip(shotsRef.current, assets.overlay, assets.slots, template.output)
+          assets.slots.length > 0
+            ? composeSlots(shotsRef.current, assets.overlay, assets.slots, template.output)
             : composeSingle(shotsRef.current[0], assets.overlay, template.output)
         const previewUrl = canvasToPreviewDataUrl(composed)
         const blob = await canvasToJpegBlob(composed)
@@ -264,7 +264,7 @@ export function useBoothSession(template: Template, boothConfig: BoothConfig): B
               updatePhase(printingRef.current ? 'printing' : 'busy')
             } else if (inCooldown) {
               message =
-                template.kind === 'strip6'
+                needed > 1
                   ? `Shot ${shotsRef.current.length}/${needed} — show S again`
                   : 'Nice! Get ready for the next guest'
               updatePhase('cooldown')
@@ -278,7 +278,7 @@ export function useBoothSession(template: Template, boothConfig: BoothConfig): B
               if (trigger.shouldSnap) {
                 snap()
                 message =
-                  template.kind === 'strip6'
+                  needed > 1
                     ? `Shot ${shotsRef.current.length}/${needed} captured`
                     : 'Captured!'
                 updatePhase('cooldown')
@@ -344,7 +344,7 @@ export function useBoothSession(template: Template, boothConfig: BoothConfig): B
       document.removeEventListener('visibilitychange', stopForVisibility)
       window.removeEventListener('pagehide', stopForVisibility)
     }
-  }, [boothConfig.captureMode, needed, router, template])
+  }, [boothConfig.captureMode, needed, router, template, tryNavigate])
 
   const retakeLast = () => {
     if (busyRef.current || shotsRef.current.length === 0) return

@@ -39,12 +39,12 @@ export default function Download() {
       <div className="pixel-grid-bg" aria-hidden />
 
       <header className="picker-head">
-        <p className="pixel-kicker">RBS PHOTOBOOTH</p>
-        <h1 className="pixel-title">your photo</h1>
+        <p className="pixel-kicker">RBS PHOTOBOOTH / PHONE VIEW</p>
+        <h1 className="pixel-title">your signal</h1>
         {meta && (
           <p className="picker-sub">
-            {meta.hasEdit ? 'Showing your edited version' : 'Original capture'} · link expires{' '}
-            {new Date(meta.expiresAt).toLocaleString()}
+            {meta.hasEdit ? 'Showing your edited version.' : 'Original capture.'} Link expires{' '}
+            {new Date(meta.expiresAt).toLocaleString()}.
           </p>
         )}
       </header>
@@ -88,7 +88,7 @@ export default function Download() {
               onClick={async () => {
                 try {
                   const result = await sharePhotoFile(token, meta.hasEdit)
-                  setShareNote(result === 'shared' ? 'Shared via your device' : 'Share unavailable — downloaded instead')
+                  setShareNote(result === 'shared' ? 'Shared via your device' : 'Share unavailable. Downloaded instead.')
                 } catch (e) {
                   setError(e instanceof Error ? e.message : 'Share failed')
                 }

@@ -69,8 +69,8 @@ export default function PrintCheckout({ token }: Props) {
   return (
     <section className="print-checkout pixel-card">
       <header className="print-checkout__head">
-        <p className="pixel-kicker">RBS PRINT</p>
-        <h2 className="pixel-title">order prints</h2>
+        <p className="pixel-kicker">RBS PRINT / BOOTH OUTPUT</p>
+        <h2 className="pixel-title">make it physical</h2>
         <p className="picker-sub">Download is free. Printing is paid at the booth.</p>
       </header>
 
@@ -107,7 +107,7 @@ export default function PrintCheckout({ token }: Props) {
           </p>
 
           <button type="button" className="pixel-btn" disabled={busy} onClick={() => void startPrint()}>
-            {busy ? 'PROCESSING…' : 'PAY & PRINT'}
+            {busy ? 'PROCESSING' : 'PAY & PRINT'}
           </button>
         </>
       )}

@@ -39,7 +39,7 @@ export default function RbsPrinterReveal({ imageSrc, onComplete }: Props) {
           <div className="printer-top">
             <span className="printer-led" aria-hidden="true" />
             <span className="printer-status-text">
-              {phase === 'done' ? 'Done' : phase === 'printing' ? 'Printing…' : 'Preparing…'}
+              {phase === 'done' ? 'Done' : phase === 'printing' ? 'Printing' : 'Preparing'}
             </span>
           </div>
           <div className="printer-face">
@@ -54,7 +54,7 @@ export default function RbsPrinterReveal({ imageSrc, onComplete }: Props) {
             />
           </div>
         </div>
-        <p className="printer-caption">Your print is on the way</p>
+        <p className="printer-caption">Your print is moving through the signal.</p>
       </div>
     </div>
   )

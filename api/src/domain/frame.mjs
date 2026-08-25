@@ -48,20 +48,44 @@ function validDimension(value) {
   return Number.isInteger(value) && value >= 64 && value <= 8192
 }
 
+function normalizeRotation(value) {
+  if (value === undefined) return 0
+  if (!Number.isFinite(value)) return null
+  const normalized = ((value + 180) % 360 + 360) % 360 - 180
+  return Object.is(normalized, -0) ? 0 : normalized
+}
+
+function rotatedCorners(slot, rotation) {
+  const radians = (rotation * Math.PI) / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const cx = slot.x + slot.w / 2
+  const cy = slot.y + slot.h / 2
+  return [
+    [-slot.w / 2, -slot.h / 2],
+    [slot.w / 2, -slot.h / 2],
+    [slot.w / 2, slot.h / 2],
+    [-slot.w / 2, slot.h / 2],
+  ].map(([x, y]) => ({
+    x: cx + x * cos - y * sin,
+    y: cy + x * sin + y * cos,
+  }))
+}
+
 function validSlot(slot, width, height) {
-  return (
-    slot &&
-    Number.isFinite(slot.x) &&
-    Number.isFinite(slot.y) &&
-    Number.isFinite(slot.w) &&
-    Number.isFinite(slot.h) &&
-    slot.w >= 8 &&
-    slot.h >= 8 &&
-    slot.x >= 0 &&
-    slot.y >= 0 &&
-    slot.x + slot.w <= width &&
-    slot.y + slot.h <= height
-  )
+  if (
+    !slot ||
+    !Number.isFinite(slot.x) ||
+    !Number.isFinite(slot.y) ||
+    !Number.isFinite(slot.w) ||
+    !Number.isFinite(slot.h) ||
+    slot.w < 8 ||
+    slot.h < 8
+  ) return false
+  const rotation = normalizeRotation(slot.rotation)
+  if (rotation === null) return false
+  const corners = rotatedCorners(slot, rotation)
+  return corners.every((corner) => corner.x >= 0 && corner.y >= 0 && corner.x <= width && corner.y <= height)
 }
 
 export function validateFrameManifest(input) {
@@ -74,12 +98,14 @@ export function validateFrameManifest(input) {
   const slots = Array.isArray(input.slots) ? input.slots : input.layout?.slots
   if (!isValidFrameId(id)) return { ok: false, message: 'Frame id must use lowercase letters, numbers, hyphens, or underscores' }
   if (!name) return { ok: false, message: 'Frame name is required' }
-  if (kind !== 'single' && kind !== 'strip6') return { ok: false, message: 'Frame kind is invalid' }
+  if (kind !== 'single' && kind !== 'strip6' && kind !== 'custom') return { ok: false, message: 'Frame kind is invalid' }
   if (!validDimension(width) || !validDimension(height)) return { ok: false, message: 'Frame dimensions must be between 64 and 8192 pixels' }
-  if (!Array.isArray(slots) || slots.length > 24) return { ok: false, message: 'Frame slots must be an array with at most 24 entries' }
+  if (!Array.isArray(slots) || slots.length > 120) return { ok: false, message: 'Frame slots must be an array with at most 120 entries' }
+  if (kind === 'custom' && slots.length === 0) return { ok: false, message: 'Custom frames need at least one photo slot' }
   if (kind === 'single' && slots.length > 1) return { ok: false, message: 'Single frames can define at most one photo slot' }
-  if (kind === 'strip6' && slots.length === 0) return { ok: false, message: 'Strip frames need at least one photo slot' }
+  if (kind === 'strip6' && slots.length !== 6) return { ok: false, message: 'Strip frames need exactly 6 photo slots' }
   if (!slots.every((slot) => validSlot(slot, width, height))) return { ok: false, message: 'Frame slots must stay inside the output canvas' }
+  const normalizedSlots = slots.map((slot) => ({ ...slot, rotation: normalizeRotation(slot.rotation) }))
   return {
     ok: true,
     manifest: {
@@ -88,8 +114,8 @@ export function validateFrameManifest(input) {
       kind,
       version: Number.isInteger(input.version) && input.version > 0 ? input.version : 1,
       output: { width, height, mimeType: 'image/jpeg' },
-      layout: { mode: kind === 'strip6' ? 'strip' : 'single', slots, crop: 'cover' },
-      slots,
+      layout: { mode: kind === 'strip6' ? 'strip' : kind === 'custom' ? 'custom' : 'single', slots: normalizedSlots, crop: 'cover' },
+      slots: normalizedSlots,
     },
   }
 }

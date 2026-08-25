@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useBoothSession, type CapturePhase } from '../features/booth/useBoothSession'
 import { frameById, useFrameCatalog } from '../lib/frameCatalog'
+import { templateShotCount } from '../lib/templates'
 import type { BoothConfig } from '../lib/api'
 import RbsPrinterReveal from './RbsPrinterReveal'
 
@@ -37,8 +38,8 @@ export default function Booth({
   const { frames } = useFrameCatalog()
   const template = frameById(templateId, frames)
   const session = useBoothSession(template, boothConfig)
-  const needed = template.kind === 'strip6' ? 6 : 1
-  const progress = template.kind === 'strip6' ? session.shotCount / needed : session.phase === 'cooldown' ? 1 : 0
+  const needed = templateShotCount(template)
+  const progress = needed > 1 ? session.shotCount / needed : session.phase === 'cooldown' ? 1 : 0
 
   return (
     <main className="booth booth-pixel">
@@ -61,7 +62,7 @@ export default function Booth({
           <Image src={template.thumbnailSrc} alt="" width={48} height={32} className="pixel-thumb" unoptimized />
           <span>{template.name}</span>
         </div>
-        <span className="pixel-badge">{template.kind === 'strip6' ? '×6' : '1×'}</span>
+        <span className="pixel-badge">{needed > 1 ? `×${needed}` : '1×'}</span>
       </header>
 
       <div className="booth-pixel__stage">
@@ -90,7 +91,7 @@ export default function Booth({
       </div>
 
       <footer className="booth-pixel__dock">
-        {template.kind === 'strip6' && (
+        {needed > 1 && (
           <div className="booth-pixel__strip">
             <div className="booth-pixel__strip-label">
               <span className="pixel-kicker">STRIP</span>
@@ -126,7 +127,7 @@ export default function Booth({
         </div>
 
         {apiUnavailable && !session.error && (
-          <p className="booth-pixel__notice">API offline — camera preview vẫn hoạt động</p>
+          <p className="booth-pixel__notice">API offline. Camera preview still works.</p>
         )}
         {session.error && <p className="error">{session.error}</p>}
       </footer>

@@ -1,4 +1,21 @@
-export type Rect = { x: number; y: number; w: number; h: number }
+export type Rect = { x: number; y: number; w: number; h: number; rotation?: number }
+
+function rotatedCorners(slot: Rect): { x: number; y: number }[] {
+  const radians = ((slot.rotation ?? 0) * Math.PI) / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const cx = slot.x + slot.w / 2
+  const cy = slot.y + slot.h / 2
+  return [
+    [-slot.w / 2, -slot.h / 2],
+    [slot.w / 2, -slot.h / 2],
+    [slot.w / 2, slot.h / 2],
+    [-slot.w / 2, slot.h / 2],
+  ].map(([x, y]) => ({
+    x: cx + x * cos - y * sin,
+    y: cy + x * sin + y * cos,
+  }))
+}
 
 const BLACK_KEY = 16
 
@@ -238,12 +255,26 @@ export function overlayFromSlots(art: HTMLCanvasElement, slots: Rect[]): HTMLCan
   const dest = octx.createImageData(w, h)
   dest.data.set(src.data)
   for (const slot of slots) {
-    const left = Math.max(0, Math.floor(slot.x))
-    const top = Math.max(0, Math.floor(slot.y))
-    const right = Math.min(w, Math.ceil(slot.x + slot.w))
-    const bottom = Math.min(h, Math.ceil(slot.y + slot.h))
+    const corners = rotatedCorners(slot)
+    const left = Math.max(0, Math.floor(Math.min(...corners.map((corner) => corner.x))))
+    const top = Math.max(0, Math.floor(Math.min(...corners.map((corner) => corner.y))))
+    const right = Math.min(w, Math.ceil(Math.max(...corners.map((corner) => corner.x))))
+    const bottom = Math.min(h, Math.ceil(Math.max(...corners.map((corner) => corner.y))))
     for (let y = top; y < bottom; y++) {
-      for (let x = left; x < right; x++) dest.data[(y * w + x) * 4 + 3] = 0
+      for (let x = left; x < right; x++) {
+        const px = x + 0.5
+        const py = y + 0.5
+        let inside = true
+        for (let index = 0; index < corners.length; index += 1) {
+          const a = corners[index]
+          const b = corners[(index + 1) % corners.length]
+          if ((b.x - a.x) * (py - a.y) - (b.y - a.y) * (px - a.x) < 0) {
+            inside = false
+            break
+          }
+        }
+        if (inside) dest.data[(y * w + x) * 4 + 3] = 0
+      }
     }
   }
   octx.putImageData(dest, 0, 0)

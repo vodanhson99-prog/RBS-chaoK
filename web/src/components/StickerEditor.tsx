@@ -16,7 +16,7 @@ export default function StickerEditor() {
     return (
       <main className="editor-pixel editor-pixel--loading">
         <div className="pixel-grid-bg" aria-hidden />
-        <p className="editor-pixel__loading">LOADING PHOTO…</p>
+        <p className="editor-pixel__loading">LOADING PHOTO...</p>
       </main>
     )
   }
@@ -42,8 +42,8 @@ export default function StickerEditor() {
           ← BACK
         </Link>
         <div className="editor-pixel__title-wrap">
-          <p className="pixel-kicker">RBS EDIT</p>
-          <h1 className="pixel-title">decorate</h1>
+          <p className="pixel-kicker">RBS EDIT / CREATIVE PASS</p>
+          <h1 className="pixel-title">shape the signal</h1>
         </div>
         <button
           type="button"
@@ -51,7 +51,7 @@ export default function StickerEditor() {
           onClick={() => void editor.save()}
           disabled={editor.saving || !editor.hasChanges}
         >
-          {editor.saving ? 'SAVING…' : editor.saved ? 'SAVED ✓' : 'SAVE'}
+          {editor.saving ? 'SAVING' : editor.saved ? 'SAVED' : 'SAVE'}
         </button>
       </header>
 

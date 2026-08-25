@@ -320,10 +320,10 @@ export default function HandGestureDebug() {
   return (
     <div className="hg-page">
       <header className="hg-header">
-        <p className="pixel-kicker">develop / handgesture</p>
-        <h1 className="pixel-title">debug chữ S</h1>
+        <p className="pixel-kicker">CONTROL ROOM / GESTURE INPUT</p>
+        <h1 className="pixel-title">tune the S signal</h1>
         <p className="hg-sub">
-          Logic: <code>web/src/lib/letterSGesture.ts</code> — export{' '}
+          Logic: <code>web/src/lib/letterSGesture.ts</code>. Export{' '}
           <code>analyzeLetterSGesture</code>, <code>scoreLetterSGesture</code>
         </p>
       </header>
@@ -405,7 +405,7 @@ export default function HandGestureDebug() {
           </section>
 
           <section className="hg-section">
-            <h2 className="hg-section-title">Fingers curl (0–1)</h2>
+            <h2 className="hg-section-title">Fingers curl (0 to 1)</h2>
             <MetricRow label="index" value={(analysis?.fingers.index ?? 0).toFixed(2)} />
             <MetricRow label="middle" value={(analysis?.fingers.middle ?? 0).toFixed(2)} />
             <MetricRow label="ring" value={(analysis?.fingers.ring ?? 0).toFixed(2)} />
@@ -467,7 +467,7 @@ export default function HandGestureDebug() {
             >
               chụp (Space)
             </button>
-            <p className="hg-api-note">Lưu JPG + landmarks JSON. Dùng ground truth khi algo sai.</p>
+            <p className="hg-api-note">Save JPG and landmark JSON. Use ground truth when the detector misses.</p>
           </section>
 
           {candidates.length > 0 && (
