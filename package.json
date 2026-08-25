@@ -1,6 +1,9 @@
 {
   "name": "rbs-chaok",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "postinstall": "npm install --prefix api && npm install --prefix web",
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix api\" \"npm run dev --prefix web\"",

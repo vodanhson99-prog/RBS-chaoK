@@ -11,7 +11,7 @@ const WEB_DIST = path.join(ROOT, '..', 'web', 'dist')
 const DATA = path.join(ROOT, 'data', 'sessions')
 const TTL_MS = 48 * 60 * 60 * 1000
 const MAX_BYTES = 12 * 1024 * 1024
-const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || ''
+const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || process.env.COOLIFY_URL || ''
 
 await fs.mkdir(DATA, { recursive: true })
 
