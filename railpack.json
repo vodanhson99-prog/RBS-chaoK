@@ -14,6 +14,7 @@
     }
   },
   "deploy": {
-    "startCommand": "npm start"
+    "startCommand": "npm start",
+    "aptPackages": ["curl", "wget"]
   }
 }

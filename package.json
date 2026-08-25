@@ -1,10 +1,6 @@
 {
   "name": "rbs-chaok",
   "private": true,
-  "workspaces": [
-    "api",
-    "web"
-  ],
   "engines": {
     "node": ">=20.19"
   },
@@ -12,11 +8,16 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix api\" \"npm run dev --prefix web\"",
     "dev:web": "npm run dev --prefix web",
     "dev:api": "npm run dev --prefix api",
+    "install:apps": "npm install --prefix api && npm install --prefix web",
     "build": "npm run build --prefix web",
     "start": "node scripts/start-production.mjs",
+    "postinstall": "npm run install:apps",
     "worker:print": "npm run start --prefix worker",
     "backup:data": "node scripts/backup-data.mjs",
     "test:api": "npm test --prefix api"
+  },
+  "dependencies": {
+    "fastify": "^5.6.1"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
