@@ -8,7 +8,12 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    return [{ source: '/api/:path*', destination: 'http://127.0.0.1:8787/api/:path*' }]
+    const apiPort = process.env.API_PORT || '8787'
+    const apiBase = `http://127.0.0.1:${apiPort}`
+    return [
+      { source: '/readyz', destination: `${apiBase}/readyz` },
+      { source: '/api/:path*', destination: `${apiBase}/api/:path*` },
+    ]
   },
 }
 

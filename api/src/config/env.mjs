@@ -53,7 +53,7 @@ export function loadConfig(env = process.env) {
   return {
     root: path.resolve(ROOT, '../..'),
     dataDir: path.resolve(env.PHOTO_DATA_DIR || env.SESSION_DATA_DIR || path.join(ROOT, '..', 'data')),
-    port: positiveInt(env.PORT, 8787),
+    port: positiveInt(env.API_PORT, 8787),
     sessionTtlMs: positiveInt(env.SESSION_TTL_HOURS, 48) * 60 * 60 * 1000,
     photoRetentionMs: positiveInt(env.PHOTO_RETENTION_DAYS, 90) * 24 * 60 * 60 * 1000,
     qrAccessTtlMs: positiveInt(env.QR_ACCESS_TTL_HOURS, env.SESSION_TTL_HOURS || 48) * 60 * 60 * 1000,
