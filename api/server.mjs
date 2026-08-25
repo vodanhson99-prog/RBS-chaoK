@@ -4,8 +4,10 @@ import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import Fastify from 'fastify'
+import fastifyStatic from '@fastify/static'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+const WEB_DIST = path.join(ROOT, '..', 'web', 'dist')
 const DATA = path.join(ROOT, 'data', 'sessions')
 const TTL_MS = 48 * 60 * 60 * 1000
 const MAX_BYTES = 12 * 1024 * 1024
@@ -13,7 +15,7 @@ const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || ''
 
 await fs.mkdir(DATA, { recursive: true })
 
-const app = Fastify({ logger: true, bodyLimit: MAX_BYTES })
+const app = Fastify({ logger: true, bodyLimit: MAX_BYTES, trustProxy: true })
 
 app.addContentTypeParser('image/jpeg', { parseAs: 'buffer' }, (_req, body, done) => {
   done(null, body)
@@ -67,6 +69,12 @@ function lanIPv4() {
     null
   )
 }
+
+app.get('/api/health', async () => ({
+  ok: true,
+  printer: Boolean(process.env.CANON_PRINTER_NAME),
+  publicBase: PUBLIC_BASE || null,
+}))
 
 app.get('/api/lan', async () => ({
   host: lanIPv4(),
@@ -207,6 +215,25 @@ app.post('/api/print', async (req, reply) => {
   return { ok: true, file: filename }
 })
 
+/* ── Static web (production) ─────────────────── */
+let servingWeb = false
+try {
+  await fs.access(path.join(WEB_DIST, 'index.html'))
+  await app.register(fastifyStatic, {
+    root: WEB_DIST,
+    wildcard: false,
+  })
+  app.setNotFoundHandler((req, reply) => {
+    if (req.url.startsWith('/api') || (req.method !== 'GET' && req.method !== 'HEAD')) {
+      return reply.code(404).send({ error: 'not found' })
+    }
+    return reply.sendFile('index.html')
+  })
+  servingWeb = true
+} catch {
+  app.log.warn('web/dist missing — API-only. Run `npm run build` at repo root for full deploy.')
+}
+
 const port = Number(process.env.PORT || 8787)
 await app.listen({ port, host: '0.0.0.0' })
-console.log(`photobooth api on :${port}`)
+console.log(`photobooth ${servingWeb ? 'app' : 'api'} on :${port}`)

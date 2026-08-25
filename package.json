@@ -2,9 +2,13 @@
   "name": "rbs-chaok",
   "private": true,
   "scripts": {
+    "postinstall": "npm install --prefix api && npm install --prefix web",
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --prefix api\" \"npm run dev --prefix web\"",
     "dev:web": "npm run dev --prefix web",
-    "dev:api": "npm run dev --prefix api"
+    "dev:api": "npm run dev --prefix api",
+    "build": "npm run build --prefix web",
+    "start": "npm run start --prefix api",
+    "preview": "npm run build && npm run start"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

@@ -8,12 +8,20 @@ Cần Node 18+, webcam, **HTTPS hoặc localhost** (camera).
 
 ```bash
 npm install
-cd api && npm install && cd ../web && npm install
-cd ..
 npm run dev
 ```
 
 Mở http://localhost:5173
+
+### Deploy (một process)
+
+API serve luôn `web/dist`. Từ thư mục gốc repo:
+
+```bash
+npm install
+npm run build
+npm start
+```
 
 - Chọn template: Navy/Maroon 16:9 hoặc RBS strip ×6
 - Giơ **hai tay**, tạo **chữ S lật ngược** (tay trên cong trái, tay dưới cong phải) → khóa pose → countdown 7s → chụp

@@ -12,3 +12,5 @@ web/dist/
 api/node_modules/
 api/data/sessions/*
 !api/data/sessions/.gitkeep
+api/data/print-queue/*
+!api/data/print-queue/.gitkeep
