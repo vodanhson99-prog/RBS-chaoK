@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -28,6 +29,7 @@ function ensureProductionEnv() {
   }
 
   process.env.API_PORT = API_PORT
+  process.env.HOSTNAME = '0.0.0.0'
 
   if (!process.env.PRINT_WORKER_SECRET || process.env.PRINT_WORKER_SECRET === 'dev-print-worker') {
     process.env.PRINT_WORKER_SECRET = randomSecret()
@@ -43,11 +45,58 @@ function ensureProductionEnv() {
   }
 }
 
+function resolveWebStart() {
+  const candidates = [
+    path.join(ROOT, 'web', '.next', 'standalone', 'server.js'),
+    path.join(ROOT, 'web', '.next', 'standalone', 'web', 'server.js'),
+  ]
+
+  for (const serverEntry of candidates) {
+    if (fs.existsSync(serverEntry)) {
+      return {
+        command: process.execPath,
+        args: [serverEntry],
+        cwd: path.dirname(serverEntry),
+        mode: 'standalone',
+      }
+    }
+  }
+
+  const nextCandidates = [
+    path.join(ROOT, 'node_modules', 'next', 'dist', 'bin', 'next'),
+    path.join(ROOT, 'web', 'node_modules', 'next', 'dist', 'bin', 'next'),
+  ]
+
+  for (const nextBin of nextCandidates) {
+    if (fs.existsSync(nextBin)) {
+      return {
+        command: process.execPath,
+        args: [nextBin, 'start', '-H', '0.0.0.0', '-p', WEB_PORT],
+        cwd: path.join(ROOT, 'web'),
+        mode: 'next-start',
+      }
+    }
+  }
+
+  throw new Error('No Next.js runtime found (standalone server or next binary)')
+}
+
 ensureProductionEnv()
 
-console.log(`Starting photobooth: api=:${API_PORT}, web=:${WEB_PORT}`)
+const webStart = resolveWebStart()
+console.log(`Starting photobooth: api=:${API_PORT}, web=:${WEB_PORT} (${webStart.mode})`)
 
-const childEnv = { ...process.env, API_PORT, PORT: WEB_PORT }
+const nodePath = [path.join(ROOT, 'node_modules'), path.join(ROOT, 'api', 'node_modules')]
+  .filter((entry) => fs.existsSync(entry))
+  .join(path.delimiter)
+
+const childEnv = {
+  ...process.env,
+  API_PORT,
+  PORT: WEB_PORT,
+  HOSTNAME: '0.0.0.0',
+  ...(nodePath ? { NODE_PATH: nodePath } : {}),
+}
 
 const api = spawn(process.execPath, ['server.mjs'], {
   cwd: path.join(ROOT, 'api'),
@@ -55,15 +104,11 @@ const api = spawn(process.execPath, ['server.mjs'], {
   env: childEnv,
 })
 
-const web = spawn(
-  process.execPath,
-  [path.join(ROOT, 'web', 'node_modules', 'next', 'dist', 'bin', 'next'), 'start', '-H', '0.0.0.0', '-p', WEB_PORT],
-  {
-    cwd: path.join(ROOT, 'web'),
-    stdio: 'inherit',
-    env: childEnv,
-  },
-)
+const web = spawn(webStart.command, webStart.args, {
+  cwd: webStart.cwd,
+  stdio: 'inherit',
+  env: childEnv,
+})
 
 let shuttingDown = false
 
